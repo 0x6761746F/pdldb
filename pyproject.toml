@@ -1,0 +1,37 @@
+[project]
+name = "pdldb"
+version = "0.1.4"
+description = "A high-performance analytical data store combining Polars' processing speed with Delta Lake's ACID transactions. This lightweight wrapper provides a database-like experience for local data processing."
+readme = "README.md"
+authors = [
+    { name = "0x6761746F", email = "0x6761746F@0x6761746F.com" }
+]
+license = "Apache-2.0"
+requires-python = ">=3.9"
+dependencies = [
+    "boto3>=1.35.90",
+    "deltalake>=0.25.4",
+    "numpy>=1.26.4",
+    "polars>=1.26.0",
+    "pydantic>=2.10.6",
+]
+
+[project.scripts]
+pdldb = "pdldb:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings>=0.29.0",
+    "mkdocstrings-python>=1.7.3",
+]
+
+[project.urls]
+Repository = "https://github.com/0x6761746F/pdldb"
+Documentation = "https://0x6761746f.github.io/pdldb/"
