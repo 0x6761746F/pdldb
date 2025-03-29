@@ -106,18 +106,18 @@ class TableNameModel(BaseModel):
 class LakeManager:
     """
     Base class for managing a data lake with tables stored in Delta format.
-    
+
     This class provides the foundation for creating, reading, updating, and managing
     Delta tables in a data lake. It's designed to be extended by specific implementations
     like LocalLakeManager.
     """
-    
+
     def __init__(
         self, base_path: str, storage_options: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize a new LakeManager.
-        
+
         Args:
             base_path: The base path where the data lake will be stored
             storage_options: Optional cloud storage-specific parameters
@@ -145,17 +145,17 @@ class LakeManager:
     ) -> None:
         """
         Create a new table in the data lake.
-        
+
         Args:
             table_name: Name of the table to create
             table_schema: Schema definition for the new table
             primary_keys: Primary key column(s) for the table
-        
+
         Example: Single primary key
             ```python
             from pdldb import LocalLakeManager
             import polars as pl
-            
+
             lake_manager = LocalLakeManager("data")
             schema = {
                 "sequence": pl.Int32,
@@ -194,12 +194,12 @@ class LakeManager:
     ) -> None:
         """
         Append data to an existing table.
-        
+
         Args:
             table_name: Name of the table to append to
             df: DataFrame containing the data to append
             delta_write_options: Optional configuration for the delta write operation
-        
+
         Example:
             ```python
             lake_manager.append_table("my_table", newdata)
@@ -225,7 +225,7 @@ class LakeManager:
     ) -> None:
         """
         Merge data into an existing table based on the specified merge condition.
-        
+
         Args:
             table_name: Name of the table to merge data into
             df: DataFrame containing the data to merge
@@ -238,7 +238,7 @@ class LakeManager:
             - delete: Delete existing rows that exist in the new data
             - upsert: Update existing rows and insert new rows from the new data
             - upsert_delete: Update existing rows, insert new rows, and delete rows that don't exist in the new data
-        
+
         Example:
             ```python
             lake_manager.merge_table("my_table", new_data, merge_condition="upsert")
@@ -268,7 +268,7 @@ class LakeManager:
     ) -> None:
         """
         Overwrite an existing table with new data.
-        
+
         Args:
             table_name: Name of the table to overwrite
             df: DataFrame containing the new data
@@ -293,10 +293,10 @@ class LakeManager:
     def get_data_frame(self, table_name: str) -> pl.DataFrame:
         """
         Get an eager DataFrame from a table.
-        
+
         Args:
             table_name: Name of the table to read
-            
+
         Returns:
             A Polars DataFrame containing the table data
 
@@ -312,10 +312,10 @@ class LakeManager:
     def get_lazy_frame(self, table_name: str) -> pl.LazyFrame:
         """
         Get a lazy DataFrame from a table for deferred execution.
-        
+
         Args:
             table_name: Name of the table to read
-            
+
         Returns:
             A Polars LazyFrame referencing the table data
 
@@ -340,13 +340,13 @@ class LakeManager:
         """
         Optimize a table by compacting small files in to files of the target size.
         Optimizing a table can improve query performance and cloud costs.
-        
+
         Args:
             table_name: Name of the table to optimize
             target_size: Target file size in bytes for optimization
             max_concurrent_tasks: Maximum number of concurrent tasks for optimization
             writer_properties: Optional writer properties for optimization
-        
+
         Example:
             ```python
             lake_manager.optimize_table("my_table", target_size=512*1024*1024)
@@ -376,12 +376,12 @@ class LakeManager:
         """
         Clean up old data files from a table based on the retention period.
         Old data files are those that are no longer referenced by the table.
-        
+
         Args:
             table_name: Name of the table to vacuum
             retention_hours: Retention period in hours (0 means delete all unreferenced files)
             enforce_retention_duration: Whether to enforce the retention period
-        
+
         Example:
             ```python
             lake_manager.vacuum_table("my_table", retention_hours=24)
@@ -403,10 +403,10 @@ class LakeManager:
     def list_tables(self) -> Dict[str, Dict[str, Any]]:
         """
         List all tables in the data lake.
-        
+
         Returns:
             A dictionary mapping table names to their metadata
-        
+
         Example:
             ```python
             lake_manager.list_tables()
@@ -417,13 +417,13 @@ class LakeManager:
     def get_table_info(self, table_name: str) -> Dict[str, Any]:
         """
         Get detailed information about a specific table.
-        
+
         Args:
             table_name: Name of the table to get information for
-            
+
         Returns:
             A dictionary containing detailed table information
-        
+
         Example:
             ```python
             lake_manager.get_table_info("my_table")
@@ -436,13 +436,13 @@ class LakeManager:
     def get_table_schema(self, table_name: str) -> Dict[str, Any]:
         """
         Get the schema definition for a specific table.
-        
+
         Args:
             table_name: Name of the table to get the schema for
-            
+
         Returns:
             A dictionary representing the table schema
-        
+
         Example:
             ```python
             lake_manager.get_table_schema("my_table")
@@ -456,10 +456,10 @@ class LakeManager:
         """
         Delete a table from the data lake.
         Deleted data files are not recoverable, so use with caution.
-        
+
         Args:
             table_name: Name of the table to delete
-            
+
         Returns:
             True if the table was successfully deleted
 
@@ -482,15 +482,15 @@ class LakeManager:
 class LocalLakeManager(LakeManager):
     """
     Implementation of LakeManager for local filesystem storage.
-    
+
     This class extends the base LakeManager to provide specific functionality
     for managing Delta tables in a local filesystem.
     """
-    
+
     def __init__(self, base_path: str):
         """
         Initialize a new LocalLakeManager.
-        
+
         Args:
             base_path: The local filesystem path where the data lake will be stored
 

@@ -45,21 +45,22 @@ class RestoreParams(BaseModel):
 class LocalBackupManager:
     """
     Manages local file backups with support for both full and mirror backup strategies.
-    
+
     This class provides functionality to:
 
     - Create full backups (complete tar.gz archives with manifests)
     - Create/update mirror backups (individual files with change detection)
     - Restore files from either backup type
     - List available backups with their metadata
-    
+
     All backups are stored in a structured directory hierarchy:
 
     - {backup_directory}/{prefix}full_backups/ - Contains all full backups
     - {backup_directory}/{prefix}mirror_backup/ - Contains the single mirror backup
-    
+
     Each backup includes a manifest.json file with metadata about the backup, including file hashes, modification times, creation timestamp, and backup type.
     """
+
     class Config(BaseModel):
         backup_directory: DirectoryPath
         prefix: str = "pdldb_backups/"
@@ -69,14 +70,14 @@ class LocalBackupManager:
     ):
         """
         Initialize a LocalBackupManager with the specified backup directory and prefix.
-        
+
         Args:
             backup_directory: The base directory where all backups will be stored
             prefix: Optional prefix for backup subdirectories (default: "pdldb_backups/")
                 Used to organize backups within the backup_directory
-        
+
         !!! note
-            This method creates the necessary subdirectories for both full and mirror 
+            This method creates the necessary subdirectories for both full and mirror
             backups if they don't already exist.
         """
         config = self.Config(
@@ -133,29 +134,29 @@ class LocalBackupManager:
     ) -> str:
         """
         Creates a complete backup of a source directory as a compressed archive.
-        
+
         A full backup creates a new backup directory containing:
 
         - A compressed tar.gz archive of the entire source directory
         - A manifest.json file with metadata and file hashes for all files
-        
+
         Unlike mirror backups, each full backup is stored as a separate archive, allowing for multiple backup versions to be maintained.
-        
+
         Args:
             source_path: Path to the directory that should be backed up
             backup_name: Optional custom name for the backup. If not provided,
                         a name will be generated using the source directory name
                         and current timestamp (e.g., "mydir_20250325_123045")
-            
+
         Returns:
             str: The name of the created backup (either the provided backup_name
                 or the auto-generated name)
-                
+
         !!! note
             - If a backup with the specified name already exists, its contents will be overwritten.
             - The manifest includes SHA-256 hashes and modification times for all files,
             which can be used for verification or restoration purposes.
-        
+
         Example:
             ```python
             manager = LocalBackupManager(backup_directory="/path/to/backups/")
@@ -201,25 +202,25 @@ class LocalBackupManager:
     def mirror_backup(self, source_path: Union[str, os.PathLike]) -> str:
         """
         Creates or updates a mirror backup from the source directory.
-        
+
         A mirror backup differs from a full backup in several ways:
 
         - Only one mirror backup can exist at a time (in the mirror_backup directory)
         - Files are stored individually rather than in a tar archive
         - Only files that have changed (based on hash comparison) are copied
         - Files in the backup that no longer exist in the source are removed
-        
+
         Args:
             source_path: Path to the directory that should be backed up
-            
+
         Returns:
             str: Always returns "mirror_backup" as the backup identifier
-            
+
         !!! note
             The backup's source directory name is stored in the manifest to help with
             restoration. Empty directories in the backup that result from file deletions
             are automatically removed.
-        
+
         Example:
             ```python
             manager = LocalBackupManager(backup_directory="/path/to/backups/")
@@ -317,25 +318,25 @@ class LocalBackupManager:
     ) -> bool:
         """
         Restores files from a backup to a specified destination path.
-        
+
         This method supports restoring from both full and mirror backups:
 
         - For mirror backups: Files are copied individually while preserving the directory structure
         - For full backups: The tar.gz archive is extracted to the destination
-        
+
         Args:
             backup_name: The name of the backup to restore from. Use "mirror_backup" for mirror backups or the directory name for full backups.
             destination_path: The target directory where files will be restored to.
             specific_files: Optional list of specific file paths to restore. If None, all files will be restored. Paths should be relative to the original backup source.
-        
+
         Returns:
             bool: True if restoration succeeded, False if it failed.
-        
+
         !!! note
             - For mirror backups, if the original source directory is stored in the manifest, a subdirectory with that name will be created at the destination.
             - For full backups, the entire archive is extracted even when specific_files is used.
             - Any errors during restoration are logged to stdout and will cause the method to return False.
-        
+
         Example:
             ```python
             manager = LocalBackupManager(backup_directory="/path/to/backups/")
@@ -343,7 +344,7 @@ class LocalBackupManager:
             print(success)
             # Output: True
             ```
-        """      
+        """
         params = RestoreParams(
             backup_name=backup_name,
             destination_path=destination_path,
@@ -411,21 +412,21 @@ class LocalBackupManager:
     def list_backups(self) -> List[BackupInfo]:
         """
         Lists all available backups in the backup directory.
-        
+
         This method scans both full backups and mirror backups:
 
         - Full backups: Individual directories in the full_prefix location, each with a manifest.json
         - Mirror backup: A single backup in the mirror_backup location with its own manifest.json
-        
+
         Returns:
             List[BackupInfo]: A list of BackupInfo objects containing details about each backup:
                 - name: The name of the backup (directory name for full backups, "mirror_backup" for mirror)
                 - type: Either "full" or "mirror"
                 - created_at: ISO timestamp when the backup was created
                 - source_directory: Original source directory name (only for mirror backups)
-        
+
         !!! note
-            If errors occur while reading manifests, they are logged to stdout but don't interrupt 
+            If errors occur while reading manifests, they are logged to stdout but don't interrupt
             the listing process.
 
         Example:

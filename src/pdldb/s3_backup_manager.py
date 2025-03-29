@@ -18,6 +18,7 @@ class S3BackupConfig(BaseModel):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
 
+
 class FullBackupRequest(BaseModel):
     source_path: str
     backup_name: Optional[str] = None
@@ -35,24 +36,25 @@ class RestoreRequest(BaseModel):
 
 class S3BackupManager:
     """
-    Manages file backups to Amazon S3 or compatible storage with support for 
+    Manages file backups to Amazon S3 or compatible storage with support for
     both full and mirror backup strategies.
-    
+
     This class provides cloud-based functionality to:
-    
+
     - Create full backups (complete tar.gz archives with manifests)
     - Create/update mirror backups (individual files with change detection)
     - Restore files from either backup type
     - List available backups with their metadata
-    
+
     All backups are stored in a structured S3 key hierarchy:
-    
+
     - {prefix}full_backups/ - Contains all full backups
     - {prefix}mirror_backup/ - Contains the single mirror backup
-    
-    Each backup includes a manifest.json file with metadata about the backup, including 
+
+    Each backup includes a manifest.json file with metadata about the backup, including
     file hashes, modification times, creation timestamp, and backup type.
     """
+
     def __init__(
         self,
         bucket_name: Optional[str] = None,
@@ -64,7 +66,7 @@ class S3BackupManager:
     ) -> None:
         """
         Initialize an S3BackupManager with the specified S3 bucket and configuration.
-        
+
         Args:
             bucket_name: S3 bucket where backups will be stored. If None, will use S3_BUCKET_NAME env var.
             aws_region: AWS region for the S3 bucket. If None, will use AWS_REGION or AWS_DEFAULT_REGION env vars.
@@ -72,7 +74,7 @@ class S3BackupManager:
             endpoint_url: Optional endpoint URL for S3-compatible storage (e.g., MinIO)
             aws_access_key_id: AWS access key ID. If None, will use AWS_ACCESS_KEY_ID env var.
             aws_secret_access_key: AWS secret access key. If None, will use AWS_SECRET_ACCESS_KEY env var.
-        
+
         !!! note
             This method sets up the S3 client and prepares the necessary key prefixes for
             both full and mirror backups.
@@ -162,25 +164,25 @@ class S3BackupManager:
     def full_backup(self, source_path: str, backup_name: Optional[str] = None) -> str:
         """
         Creates a complete backup of a source directory as a compressed archive in S3.
-        
+
         A full backup creates:
-        
+
         - A compressed tar.gz archive of the entire source directory uploaded to S3
         - A manifest.json file with metadata and file hashes for all files
-        
+
         Unlike mirror backups, each full backup is stored as a separate archive,
         allowing for multiple backup versions to be maintained.
-        
+
         Args:
             source_path: Path to the directory that should be backed up
             backup_name: Optional custom name for the backup. If not provided,
                         a name will be generated using the source directory name
                         and current timestamp (e.g., "mydir_20250325_123045")
-            
+
         Returns:
             str: The name of the created backup (either the provided backup_name
                 or the auto-generated name)
-                
+
         !!! note
             - If a backup with the specified name already exists in S3, it will be overwritten.
             - The manifest includes SHA-256 hashes and modification times for all files, which can be used for verification or restoration purposes.
@@ -252,32 +254,32 @@ class S3BackupManager:
     def mirror_backup(self, source_path: str) -> str:
         """
         Creates or updates a mirror backup from the source directory to S3.
-        
+
         A mirror backup differs from a full backup in several ways:
-        
+
         - Only one mirror backup can exist at a time (in the mirror_backup prefix)
         - Files are stored individually rather than in a tar archive
         - Only files that have changed (based on hash comparison) are uploaded
         - Files in S3 that no longer exist in the source are removed
-        
+
         The method performs an incremental sync by:
-        
+
         1. Scanning the source directory and calculating file hashes
         2. Comparing with the current S3 mirror backup manifest
         3. Determining which files need to be added, updated, or removed
         4. Uploading only the changed files and updating the manifest
-        
+
         Args:
             source_path: Path to the directory that should be backed up
-            
+
         Returns:
             str: Always returns "mirror_backup" as the backup identifier
-            
+
         !!! note
             - The backup's source directory name is stored in the manifest to help with restoration
             - S3 objects are deleted in batches of 1000 (S3 API limitation)
             - Errors during upload or deletion are logged but don't interrupt the overall process
-        
+
         Example:
             ```python
             backup_manager = S3BackupManager(bucket_name="my-bucket")
@@ -387,22 +389,22 @@ class S3BackupManager:
     ) -> bool:
         """
         Restores files from an S3 backup to a specified local destination path.
-        
+
         This method supports restoring from both full and mirror backups:
-        
+
         - For mirror backups: Files are downloaded individually while preserving the directory structure
         - For full backups: The tar.gz archive is downloaded and extracted to the destination
-        
+
         Args:
             backup_name: The name of the backup to restore from. Use "mirror_backup" for mirror backups
                         or the directory name for full backups.
             destination_path: The target directory where files will be restored to.
-            specific_files: Optional list of specific file paths to restore. If None, all files 
+            specific_files: Optional list of specific file paths to restore. If None, all files
                             will be restored. Paths should be relative to the original backup source.
-        
+
         Returns:
             bool: True if restoration succeeded, False if it failed.
-        
+
         !!! note
             - For mirror backups, if the original source directory is stored in the manifest, a subdirectory with that name will be created at the destination.
             - For full backups, the entire archive is downloaded to a temporary directory before extracting the specified files or the entire contents.
@@ -496,19 +498,19 @@ class S3BackupManager:
     def list_backups(self) -> List[Dict[str, Any]]:
         """
         Lists all available backups in the S3 bucket under the configured prefix.
-        
+
         This method scans both full backups and mirror backups:
-        
+
         - Full backups: S3 prefixes under full_backups/, each with a manifest.json
         - Mirror backup: A single backup in the mirror_backup/ prefix with its own manifest.json
-        
+
         Returns:
             List[Dict[str, Any]]: A list of dictionaries containing details about each backup:
                 - name: The name of the backup (prefix name for full backups, "mirror_backup" for mirror)
                 - type: Either "full" or "mirror"
                 - created_at: ISO timestamp when the backup was created
                 - source_directory: Original source directory name (only for mirror backups)
-        
+
         !!! note
             If errors occur while fetching objects or parsing manifests, they are logged to stdout
             but don't interrupt the listing process. The S3 list operation uses pagination to handle

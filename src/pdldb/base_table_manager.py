@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any, Union
 import polars as pl
 from deltalake import DeltaTable
+from deltalake.exceptions import TableNotFoundError
 from pathlib import Path
 from pdldb.base_table_validator import BaseTable
 from abc import ABC, abstractmethod
@@ -77,28 +78,45 @@ class BaseTableManager(ABC):
             "target_alias": "t",
         }
 
-        df = df.write_delta(
-            str(self.base_path / table_name),
-            mode=mode,
-            delta_write_options=delta_write_options,
-            storage_options=self.storage_options,
-            delta_merge_options=delta_merge_options,
-        )
+        try:
+            df = df.write_delta(
+                str(self.base_path / table_name),
+                mode=mode,
+                delta_write_options=delta_write_options,
+                storage_options=self.storage_options,
+                delta_merge_options=delta_merge_options,
+            )
 
-        if merge_condition == "update":
-            df.when_matched_update_all().execute()
+            if merge_condition == "update":
+                df.when_matched_update_all().execute()
 
-        if merge_condition == "insert":
-            df.when_not_matched_insert_all().execute()
+            if merge_condition == "insert":
+                df.when_not_matched_insert_all().execute()
 
-        if merge_condition == "delete":
-            df.when_matched_delete().execute()
+            if merge_condition == "delete":
+                df.when_matched_delete().execute()
 
-        if merge_condition == "upsert":
-            df.when_matched_update_all().when_not_matched_insert_all().execute()
+            if merge_condition == "upsert":
+                df.when_matched_update_all().when_not_matched_insert_all().execute()
 
-        if merge_condition == "upsert_delete":
-            df.when_matched_update_all().when_not_matched_insert_all().when_not_matched_by_source_delete().execute()
+            if merge_condition == "upsert_delete":
+                df.when_matched_update_all().when_not_matched_insert_all().when_not_matched_by_source_delete().execute()
+
+        except Exception as e:
+            if isinstance(e, TableNotFoundError):
+                if merge_condition in ["insert", "upsert"]:
+                    df.write_delta(
+                        str(self.base_path / table_name),
+                        mode="append",
+                        delta_write_options=delta_write_options,
+                        storage_options=self.storage_options,
+                    )
+                else:
+                    raise ValueError(
+                        f"No log files found or data found. Please check if table data exists or if the merge condition ({merge_condition}) is correct."
+                    )
+            else:
+                raise ValueError(f"An error occurred during the merge operation: {e}")
 
     def overwrite(
         self,
@@ -122,11 +140,29 @@ class BaseTableManager(ABC):
 
     def get_data_frame(self, table_name: str) -> pl.DataFrame:
         table_path = self.base_path / table_name
-        return pl.read_delta(str(table_path), storage_options=self.storage_options)
+        try:
+            return pl.read_delta(str(table_path), storage_options=self.storage_options)
+        except FileNotFoundError as e:
+            if table_name in self.tables:
+                schema = self.tables[table_name].table_schema
+                return pl.DataFrame(schema=schema)
+            else:
+                raise ValueError(
+                    f"Table '{table_name}' does not exist or has no data: {e}"
+                )
 
     def get_lazy_frame(self, table_name: str) -> pl.LazyFrame:
         table_path = self.base_path / table_name
-        return pl.scan_delta(str(table_path), storage_options=self.storage_options)
+        try:
+            return pl.scan_delta(str(table_path), storage_options=self.storage_options)
+        except FileNotFoundError as e:
+            if table_name in self.tables:
+                schema = self.tables[table_name].table_schema
+                return pl.DataFrame(schema=schema).lazy()
+            else:
+                raise ValueError(
+                    f"Table '{table_name}' does not exist or has no data: {e}"
+                )
 
     def optimize_table(
         self,

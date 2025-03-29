@@ -208,3 +208,75 @@ def test_delete_table(lake_manager, schema, sample_data):
 
     with pytest.raises(ValueError):
         lake_manager.delete_table("non_existent_table")
+
+
+def test_merge_to_empty_table(lake_manager, schema, update_data):
+    lake_manager.create_table(
+        table_name="empty_merge_table", table_schema=schema, primary_keys="id"
+    )
+
+    empty_result = lake_manager.get_data_frame("empty_merge_table")
+    assert len(empty_result) == 0
+
+    lake_manager.merge_table(
+        table_name="empty_merge_table", df=update_data, merge_condition="insert"
+    )
+    result = lake_manager.get_data_frame("empty_merge_table")
+    assert len(result) == 3
+
+    lake_manager.create_table(
+        table_name="empty_upsert_table", table_schema=schema, primary_keys="id"
+    )
+
+    lake_manager.merge_table(
+        table_name="empty_upsert_table", df=update_data, merge_condition="upsert"
+    )
+    result = lake_manager.get_data_frame("empty_upsert_table")
+    assert len(result) == 3
+
+    lake_manager.create_table(
+        table_name="empty_update_table", table_schema=schema, primary_keys="id"
+    )
+
+    with pytest.raises(ValueError):
+        lake_manager.merge_table(
+            table_name="empty_update_table", df=update_data, merge_condition="update"
+        )
+
+    with pytest.raises(ValueError):
+        lake_manager.merge_table(
+            table_name="empty_update_table", df=update_data, merge_condition="delete"
+        )
+
+
+def test_empty_table_data_access(lake_manager, schema):
+    lake_manager.create_table(
+        table_name="empty_df_table", table_schema=schema, primary_keys="id"
+    )
+
+    lake_manager.create_table(
+        table_name="empty_lazy_table", table_schema=schema, primary_keys="id"
+    )
+
+    empty_df = lake_manager.get_data_frame("empty_df_table")
+    assert len(empty_df) == 0
+    assert set(empty_df.columns) == set(schema.keys())
+    assert empty_df.schema == {k: v for k, v in schema.items()}
+
+    empty_lazy = lake_manager.get_lazy_frame("empty_lazy_table")
+    empty_lazy_collected = empty_lazy.collect()
+    assert len(empty_lazy_collected) == 0
+    assert set(empty_lazy_collected.columns) == set(schema.keys())
+    assert empty_lazy_collected.schema == {k: v for k, v in schema.items()}
+
+    sample_data = pl.DataFrame(
+        {"id": [1, 2], "name": ["test1", "test2"], "value": [1.1, 2.2]}
+    )
+
+    lake_manager.append_table(table_name="empty_df_table", df=sample_data)
+    df_result = lake_manager.get_data_frame("empty_df_table")
+    assert len(df_result) == 2
+
+    lake_manager.append_table(table_name="empty_lazy_table", df=sample_data)
+    lazy_result = lake_manager.get_lazy_frame("empty_lazy_table").collect()
+    assert len(lazy_result) == 2
