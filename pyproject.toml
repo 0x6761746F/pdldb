@@ -1,6 +1,6 @@
 [project]
 name = "pdldb"
-version = "0.1.5"
+version = "0.1.6"
 description = "A high-performance analytical data store combining Polars' processing speed with Delta Lake's ACID transactions. This lightweight wrapper provides a database-like experience for local data processing."
 readme = "README.md"
 authors = [
