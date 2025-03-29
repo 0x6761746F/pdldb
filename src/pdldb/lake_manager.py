@@ -151,6 +151,12 @@ class LakeManager:
             table_schema: Schema definition for the new table
             primary_keys: Primary key column(s) for the table
 
+        Notes:
+            - The schema is enforced for write operations.
+            - The primary keys are used to identify unique records for merge operations.
+            - The primary key can be a single column or a composite key (multiple columns).
+            - Primary keys can be specified as a string or a list of strings.
+
         Example: Single primary key
             ```python
             from pdldb import LocalLakeManager
@@ -200,6 +206,10 @@ class LakeManager:
             df: DataFrame containing the data to append
             delta_write_options: Optional configuration for the delta write operation
 
+        Notes:
+            - The schema of the DataFrame must match the schema of the table
+            - Appending data to a table has been intialized but contains no data will create the table on your storage backend.
+
         Example:
             ```python
             lake_manager.append_table("my_table", newdata)
@@ -239,6 +249,11 @@ class LakeManager:
             - upsert: Update existing rows and insert new rows from the new data
             - upsert_delete: Update existing rows, insert new rows, and delete rows that don't exist in the new data
 
+        Notes:
+            - If the table has been intialized but contains no data, merge operations requiring existing data ('update', 'delete', 'upsert_delete') will fail with an error message.
+            - The 'insert' and upsert' operations will create the table on your storage backend if the table has been intialized but contains no data.
+            - Primary keys defined for the table are used to determine matching records.
+
         Example:
             ```python
             lake_manager.merge_table("my_table", new_data, merge_condition="upsert")
@@ -274,6 +289,11 @@ class LakeManager:
             df: DataFrame containing the new data
             delta_write_options: Optional configuration for the delta write operation
 
+        Notes:
+            - The schema of the DataFrame must match the schema of the table
+            - Overwriting a table that has been intialized but contains no data will create the table on your storage backend.
+            - Overwriting a table with existing data will replace the entire table.
+
         Example:
             ```python
             lake_manager.overwrite_table("my_table", new_data)
@@ -300,6 +320,10 @@ class LakeManager:
         Returns:
             A Polars DataFrame containing the table data
 
+        Notes:
+            - All table data is loaded into a Polars DataFrame in memory.
+            - This is suitable for small to medium-sized tables.
+
         Example:
             ```python
             df = lake_manager.get_data_frame("my_table")
@@ -318,6 +342,11 @@ class LakeManager:
 
         Returns:
             A Polars LazyFrame referencing the table data
+
+        Notes:
+            - LazyFrames allow for deferred execution and optimization of query plans.
+            - Table data is not loaded into memory until an action (like collect) is called.
+            - This is suitable for large tables or complex queries.
 
         Example:
             ```python
@@ -347,6 +376,11 @@ class LakeManager:
             max_concurrent_tasks: Maximum number of concurrent tasks for optimization
             writer_properties: Optional writer properties for optimization
 
+        Notes:
+            - The target size is the desired size of the output files after optimization.
+            - The default target size is 512 MB (512 * 1024 * 1024 bytes).
+            - The optimization process may take some time depending on the size of the table and the number of files.
+
         Example:
             ```python
             lake_manager.optimize_table("my_table", target_size=512*1024*1024)
@@ -370,7 +404,7 @@ class LakeManager:
     def vacuum_table(
         self,
         table_name: str,
-        retention_hours: Optional[int] = 0,
+        retention_hours: Optional[int] = 168,
         enforce_retention_duration: Optional[bool] = False,
     ) -> None:
         """
@@ -381,6 +415,15 @@ class LakeManager:
             table_name: Name of the table to vacuum
             retention_hours: Retention period in hours (0 means delete all unreferenced files)
             enforce_retention_duration: Whether to enforce the retention period
+
+        Notes:
+            - The retention period is the time duration for which files are retained.
+            - Files older than the retention period will be deleted.
+            - Setting retention_hours to 0 will delete all unreferenced files, regardless of age.
+            - The enforce_retention_duration flag ensures that the retention period is strictly enforced.
+            - Use caution when setting retention_hours to 0, as this will delete all unreferenced files.
+            - This operation is irreversible, deleted files cannot be recovered.
+            - The vacuum operation may take some time depending on the size of the table and the number of files.
 
         Example:
             ```python
@@ -462,6 +505,12 @@ class LakeManager:
 
         Returns:
             True if the table was successfully deleted
+
+        Notes:
+            - This operation is irreversible, and deleted tables cannot be recovered.
+            - Use caution when deleting tables, especially in production environments.
+            - Ensure that you have backups or copies of important data before deletion.
+            - Deleting a table will remove all associated data files and metadata.
 
         Example:
             ```python
