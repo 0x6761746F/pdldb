@@ -2,11 +2,16 @@ import os
 
 os.environ["RUST_LOG"] = "error"
 
-from typing import Dict, Any, Optional, List, Union, Literal
-import polars as pl
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Union
+
+import polars as pl
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from pdldb.local_table_manager import LocalTableManager
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+if TYPE_CHECKING:
+    from .base_table_manager import BaseTableManager
 
 
 class LakeManagerInitModel(BaseModel):
@@ -127,7 +132,7 @@ class LakeManager:
         )
         self.base_path = Path(params.base_path)
         self.storage_options = params.storage_options
-        self.table_manager = None
+        self.table_manager: BaseTableManager
 
     def _check_table_exists(self, table_name: str) -> None:
         if table_name not in self.table_manager.tables:
@@ -230,7 +235,9 @@ class LakeManager:
         self,
         table_name: str,
         df: pl.DataFrame,
-        merge_condition: str = "insert",
+        merge_condition: Literal[
+            "update", "insert", "delete", "upsert", "upsert_delete"
+        ] = "insert",
         delta_write_options: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
