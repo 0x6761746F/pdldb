@@ -11,9 +11,9 @@ requires-python = ">=3.9"
 dependencies = [
     "boto3>=1.35.90",
     "deltalake>=0.25.4",
-    "numpy>=1.26.4",
     "polars>=1.26.0",
     "pydantic>=2.10.6",
+    "pytest-cov>=6.1.0",
 ]
 
 [project.scripts]
@@ -30,6 +30,9 @@ dev = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings>=0.29.0",
     "mkdocstrings-python>=1.7.3",
+]
+examples=[
+    "numpy>=1.26.4",
 ]
 
 [project.urls]
