@@ -142,7 +142,7 @@ class BaseTableManager(ABC):
         table_path = self.base_path / table_name
         try:
             return pl.read_delta(str(table_path), storage_options=self.storage_options)
-        except FileNotFoundError as e:
+        except TableNotFoundError as e:
             if table_name in self.tables:
                 schema = self.tables[table_name].table_schema
                 return pl.DataFrame(schema=schema)
@@ -155,7 +155,7 @@ class BaseTableManager(ABC):
         table_path = self.base_path / table_name
         try:
             return pl.scan_delta(str(table_path), storage_options=self.storage_options)
-        except FileNotFoundError as e:
+        except TableNotFoundError as e:
             if table_name in self.tables:
                 schema = self.tables[table_name].table_schema
                 return pl.DataFrame(schema=schema).lazy()
