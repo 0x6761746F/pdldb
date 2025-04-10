@@ -53,6 +53,9 @@ select = [
 ignore = [
     "COM812", # no trailing comma -> formatter does this,
     "S311", # suspicious-non-cryptographic-random-usage (S311)
+    "UP006", # 3.9 requirement
+    "FA100", # 3.10 requirement
+
 ]
 
 unfixable = [
