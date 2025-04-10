@@ -1,9 +1,16 @@
-from typing import Dict, Any
+# ruff:noqa:D102,D101,D107 docstrings
+# ruff:noqa:ANN204 Annotation
+# ruff:noqa:T201 print
+
+from __future__ import annotations
+
+from typing import Any
+
 import polars as pl
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 from pydantic.config import ConfigDict
 
-TYPE_MAPPINGS = {
+TYPE_MAPPINGS: dict[str, type[pl.DataType]] = {
     "int8": pl.Int8,
     "int16": pl.Int16,
     "int32": pl.Int32,
@@ -23,12 +30,12 @@ TYPE_MAPPINGS = {
     "date": pl.Date,
     "datetime": pl.Datetime,
     "timestamp": pl.Datetime,
-    "timestamp[ns]": pl.Datetime("ns"),
-    "timestamp[us]": pl.Datetime("us"),
-    "timestamp[ms]": pl.Datetime("ms"),
-    "Datetime(time_unit='ns')": pl.Datetime("ns"),
-    "Datetime(time_unit='us')": pl.Datetime("us"),
-    "Datetime(time_unit='ms')": pl.Datetime("ms"),
+    "timestamp[ns]": pl.Datetime,
+    "timestamp[us]": pl.Datetime,
+    "timestamp[ms]": pl.Datetime,
+    "Datetime(time_unit='ns')": pl.Datetime,
+    "Datetime(time_unit='us')": pl.Datetime,
+    "Datetime(time_unit='ms')": pl.Datetime,
     "decimal": pl.Decimal,
     "binary": pl.Binary,
     "list": pl.List,
@@ -38,33 +45,29 @@ TYPE_MAPPINGS = {
 
 class BaseTable(BaseModel):
     name: str
-    table_schema: Dict[str, Any]
+    table_schema: dict[str, Any]
     primary_keys: str
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @field_validator("primary_keys")
     @classmethod
-    def validate_primary_keys(cls, v: str, info) -> str:
+    def validate_primary_keys(cls, v: str, info: ValidationInfo) -> str:
         if "table_schema" in info.data:
             pk_columns = [col.strip() for col in v.split(",")]
             for pk_col in pk_columns:
                 if pk_col not in info.data["table_schema"]:
                     msg = f"Primary key column '{pk_col}' not found in schema"
-                    raise ValueError(
-                        msg
-                    )
+                    raise ValueError(msg)
         return v
 
-    def _check_column_exists(self, col_name: str, df_schema: Dict) -> bool:
+    def _check_column_exists(self, col_name: str, df_schema: dict) -> bool:
         if col_name not in df_schema:
             print(f"Missing column: {col_name}")
             return False
         return True
 
-    def _validate_type(
-        self, col_name: str, df_type: pl.DataType, expected_type: str
-    ) -> bool:
+    def _validate_type(self, col_name: str, df_type: pl.DataType, expected_type: str) -> bool:  # noqa: PLR0911
         expected_type_str = str(expected_type).lower()
         actual_type_str = str(df_type).lower()
 
@@ -87,9 +90,7 @@ class BaseTable(BaseModel):
                 return False
             return True
 
-        print(
-            f"Column {col_name}: unknown type {expected_type} (actual type: {actual_type_str})"
-        )
+        print(f"Column {col_name}: unknown type {expected_type} (actual type: {actual_type_str})")
         return False
 
     def validate_schema(self, df: pl.DataFrame) -> bool:
