@@ -25,7 +25,9 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "ruff",
     "pytest>=8.3.5",
+    "pytest-cov>=6.1.0",
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",
     "mkdocstrings>=0.29.0",
@@ -38,3 +40,41 @@ examples=[
 [project.urls]
 Repository = "https://github.com/0x6761746F/pdldb"
 Documentation = "https://0x6761746f.github.io/pdldb/"
+
+
+[tool.ruff]
+line-length = 115
+
+[tool.ruff.lint]
+select = [
+    "ALL"
+]
+
+ignore = [
+    "COM812", # no trailing comma -> formatter does this,
+    "S311", # suspicious-non-cryptographic-random-usage (S311)
+]
+
+unfixable = [
+    "F401", # do not remove imports
+    "ERA001", # do not remove commented out code
+    "F841", # do not remove unused assignments
+    "T201", # do not remove print
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "ARG",  # Unused function args -> fixtures nevertheless are functionally relevant...
+    # "ANN",  # Annotations are not mandatory in tests
+    "ANN201",  # return types don't matter
+    "D1",   # missing docstrings are ok in tests
+    "INP",  # implicit namespace package
+    "S101", # asserts allowed in tests...
+    "FBT",  # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
+    # The below are debateable
+    "PLR2004", # Magic value used in comparison, ...
+    "S311",    # Standard pseudo-random generators are not suitable for cryptographic purposes
+]
