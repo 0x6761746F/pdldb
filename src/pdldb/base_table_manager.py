@@ -214,7 +214,7 @@ class BaseTableManager(ABC):
             "primary_keys": base_table.primary_keys,
         }
 
-    def get_table_schema(self, table_name: str) -> Optional[dict[str, Any]]:
+    def get_table_schema(self, table_name: str) -> dict[str, Any]:
         return self.tables[table_name].table_schema
 
     @abstractmethod
