@@ -1,16 +1,17 @@
-from typing import Optional, List, Dict, Any, Union
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
 import polars as pl
 from deltalake import DeltaTable
 from deltalake.exceptions import TableNotFoundError
-from pathlib import Path
+from deltalake.table import TableMerger
+
 from pdldb.base_table_validator import BaseTable
-from abc import ABC, abstractmethod
 
 
 class BaseTableManager(ABC):
-    def __init__(
-        self, delta_table_path: str, storage_options: Optional[Dict[str, str]] = None
-    ):
+    def __init__(self, delta_table_path: str, storage_options: Optional[Dict[str, str]] = None):
         self.storage_options = storage_options
         self.base_path = Path(delta_table_path)
         self.tables: Dict[str, BaseTable] = {}
@@ -25,9 +26,7 @@ class BaseTableManager(ABC):
         if isinstance(primary_keys, list):
             primary_keys = ",".join(primary_keys)
 
-        base_table = BaseTable(
-            name=table_name, table_schema=table_schema, primary_keys=primary_keys
-        )
+        base_table = BaseTable(name=table_name, table_schema=table_schema, primary_keys=primary_keys)
         self.tables[table_name] = base_table
 
     def append(
@@ -58,7 +57,8 @@ class BaseTableManager(ABC):
     ) -> None:
         base_table = self.tables[table_name]
         if not base_table.validate_schema(df):
-            raise ValueError("DataFrame does not match table schema")
+            msg = "DataFrame does not match table schema"
+            raise ValueError(msg)
 
         primary_keys = base_table.primary_keys
         delta_write_options = delta_write_options or {}
@@ -79,44 +79,42 @@ class BaseTableManager(ABC):
         }
 
         try:
-            df = df.write_delta(
+            merger: TableMerger = df.write_delta(
                 str(self.base_path / table_name),
                 mode=mode,
-                delta_write_options=delta_write_options,
                 storage_options=self.storage_options,
                 delta_merge_options=delta_merge_options,
             )
 
             if merge_condition == "update":
-                df.when_matched_update_all().execute()
+                merger.when_matched_update_all().execute()
 
             if merge_condition == "insert":
-                df.when_not_matched_insert_all().execute()
+                merger.when_not_matched_insert_all().execute()
 
             if merge_condition == "delete":
-                df.when_matched_delete().execute()
+                merger.when_matched_delete().execute()
 
             if merge_condition == "upsert":
-                df.when_matched_update_all().when_not_matched_insert_all().execute()
+                merger.when_matched_update_all().when_not_matched_insert_all().execute()
 
             if merge_condition == "upsert_delete":
-                df.when_matched_update_all().when_not_matched_insert_all().when_not_matched_by_source_delete().execute()
+                merger.when_matched_update_all().when_not_matched_insert_all().when_not_matched_by_source_delete().execute()
 
-        except Exception as e:
-            if isinstance(e, TableNotFoundError):
-                if merge_condition in ["insert", "upsert"]:
-                    df.write_delta(
-                        str(self.base_path / table_name),
-                        mode="append",
-                        delta_write_options=delta_write_options,
-                        storage_options=self.storage_options,
-                    )
-                else:
-                    raise ValueError(
-                        f"No log files found or data found. Please check if table data exists or if the merge condition ({merge_condition}) is correct."
-                    )
+        except TableNotFoundError as e:
+            if merge_condition in ["insert", "upsert"]:
+                df.write_delta(
+                    str(self.base_path / table_name),
+                    mode="append",
+                    delta_write_options=delta_write_options,
+                    storage_options=self.storage_options,
+                )
             else:
-                raise ValueError(f"An error occurred during the merge operation: {e}")
+                msg = f"No log files found or data found. Please check if table data exists or if the merge condition ({merge_condition}) is correct."
+                raise ValueError(msg) from e
+        except Exception as e:
+            msg = f"An error occurred during the merge operation: {e}"
+            raise RuntimeError(msg) from e
 
     def overwrite(
         self,
@@ -146,10 +144,7 @@ class BaseTableManager(ABC):
             if table_name in self.tables:
                 schema = self.tables[table_name].table_schema
                 return pl.DataFrame(schema=schema)
-            else:
-                raise ValueError(
-                    f"Table '{table_name}' does not exist or has no data: {e}"
-                )
+            raise ValueError(f"Table '{table_name}' does not exist or has no data: {e}")
 
     def get_lazy_frame(self, table_name: str) -> pl.LazyFrame:
         table_path = self.base_path / table_name
@@ -159,10 +154,7 @@ class BaseTableManager(ABC):
             if table_name in self.tables:
                 schema = self.tables[table_name].table_schema
                 return pl.DataFrame(schema=schema).lazy()
-            else:
-                raise ValueError(
-                    f"Table '{table_name}' does not exist or has no data: {e}"
-                )
+            raise ValueError(f"Table '{table_name}' does not exist or has no data: {e}")
 
     def optimize_table(
         self,
@@ -171,9 +163,7 @@ class BaseTableManager(ABC):
         max_concurrent_tasks: Optional[int],
         writer_properties: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        delta_table = DeltaTable(
-            str(self.base_path / table_name), storage_options=self.storage_options
-        )
+        delta_table = DeltaTable(str(self.base_path / table_name), storage_options=self.storage_options)
 
         str(
             delta_table.optimize.compact(
@@ -189,9 +179,7 @@ class BaseTableManager(ABC):
         retention_hours: Optional[int],
         enforce_retention_duration: bool,
     ) -> List[str]:
-        delta_table = DeltaTable(
-            str(self.base_path / table_name), storage_options=self.storage_options
-        )
+        delta_table = DeltaTable(str(self.base_path / table_name), storage_options=self.storage_options)
         str(
             delta_table.vacuum(
                 retention_hours=retention_hours,
