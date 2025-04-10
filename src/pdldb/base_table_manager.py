@@ -189,7 +189,7 @@ class BaseTableManager(ABC):
         table_name: str,
         retention_hours: Optional[int],
         *,
-        enforce_retention_duration: bool,
+        enforce_retention_duration: bool = True,
     ) -> list[str]:
         delta_table = DeltaTable(str(self.base_path / table_name), storage_options=self.storage_options)
         return delta_table.vacuum(
