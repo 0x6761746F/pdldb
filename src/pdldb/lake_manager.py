@@ -430,7 +430,7 @@ class LakeManager:
         self.table_manager.vacuum_table(
             table_name=params.table_name,
             retention_hours=params.retention_hours,
-            enforce_retention_duration=params.enforce_retention_duration or True,
+            enforce_retention_duration=params.enforce_retention_duration,
         )
 
     def list_tables(self) -> dict[str, dict[str, Any]]:
