@@ -170,17 +170,13 @@ class BaseTableManager(ABC):
         target_size: Optional[int],
         max_concurrent_tasks: Optional[int],
         writer_properties: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        delta_table = DeltaTable(
-            str(self.base_path / table_name), storage_options=self.storage_options
-        )
+    ) -> dict[str, Any]:
+        delta_table = DeltaTable(str(self.base_path / table_name), storage_options=self.storage_options)
 
-        str(
-            delta_table.optimize.compact(
-                target_size=target_size,
-                max_concurrent_tasks=max_concurrent_tasks,
-                writer_properties=writer_properties,
-            )
+        return delta_table.optimize.compact(
+            target_size=target_size,
+            max_concurrent_tasks=max_concurrent_tasks,
+            writer_properties=writer_properties,
         )
 
     def vacuum_table(
@@ -188,16 +184,12 @@ class BaseTableManager(ABC):
         table_name: str,
         retention_hours: Optional[int],
         enforce_retention_duration: bool,
-    ) -> List[str]:
-        delta_table = DeltaTable(
-            str(self.base_path / table_name), storage_options=self.storage_options
-        )
-        str(
-            delta_table.vacuum(
-                retention_hours=retention_hours,
-                dry_run=False,
-                enforce_retention_duration=enforce_retention_duration,
-            )
+    ) -> list[str]:
+        delta_table = DeltaTable(str(self.base_path / table_name), storage_options=self.storage_options)
+        return delta_table.vacuum(
+            retention_hours=retention_hours,
+            dry_run=False,
+            enforce_retention_duration=enforce_retention_duration,
         )
 
     def list_tables(self) -> Dict[str, Dict[str, Any]]:
