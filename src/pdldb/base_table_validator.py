@@ -50,8 +50,9 @@ class BaseTable(BaseModel):
             pk_columns = [col.strip() for col in v.split(",")]
             for pk_col in pk_columns:
                 if pk_col not in info.data["table_schema"]:
+                    msg = f"Primary key column '{pk_col}' not found in schema"
                     raise ValueError(
-                        f"Primary key column '{pk_col}' not found in schema"
+                        msg
                     )
         return v
 
