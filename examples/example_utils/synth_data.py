@@ -1,7 +1,11 @@
 import polars as pl
-import numpy as np
 import os
 from datetime import datetime, timedelta
+
+try:
+    import numpy as np
+except ImportError:
+    raise ImportError("numpy is required for examples.")
 
 
 def generate_synthetic_data(
