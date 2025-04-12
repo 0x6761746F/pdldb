@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 
 try:
     import numpy as np
-except ImportError:
-    raise ImportError("numpy is required for examples.")
-
+except ImportError as e:
+    msg = "numpy is required for examples."
+    raise ImportError(msg) from e
 
 def generate_synthetic_data(
     target_size_mb=2048,
