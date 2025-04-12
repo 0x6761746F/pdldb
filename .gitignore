@@ -183,3 +183,7 @@ examples/example_data/
 
 # vscode
 .vscode/
+
+# local dev
+test.py
+to_do.txt
