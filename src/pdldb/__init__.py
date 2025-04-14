@@ -1,5 +1,3 @@
-from pdldb.lake_manager import LocalLakeManager
-from pdldb.local_backup_manager import LocalBackupManager
-from pdldb.s3_backup_manager import S3BackupManager
+from pdldb.lake_manager import LocalLakeManager, S3LakeManager
 
-__all__ = ["LocalLakeManager", "LocalBackupManager", "S3BackupManager"]
+__all__ = ["LocalLakeManager", "S3LakeManager"]

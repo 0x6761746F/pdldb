@@ -3,6 +3,7 @@ from pdldb.base_table_validator import BaseTable
 from deltalake import DeltaTable
 from typing import Dict, Optional
 import shutil
+from pathlib import Path
 
 
 class LocalTableManager(BaseTableManager):
@@ -10,7 +11,6 @@ class LocalTableManager(BaseTableManager):
         self, delta_table_path: str, storage_options: Optional[Dict[str, str]] = None
     ):
         super().__init__(delta_table_path, storage_options)
-
         self._load_existing_tables()
 
     def _load_existing_tables(self) -> None:

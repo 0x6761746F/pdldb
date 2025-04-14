@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional, List, Union, Literal
 import polars as pl
 from pathlib import Path
 from pdldb.local_table_manager import LocalTableManager
+from pdldb.s3_table_manager import S3TableManager
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
@@ -125,7 +126,19 @@ class LakeManager:
         params = LakeManagerInitModel(
             base_path=base_path, storage_options=storage_options
         )
-        self.base_path = Path(params.base_path)
+        if params.base_path.startswith('s3://'):
+            self.base_path = params.base_path
+        else:
+            self.base_path = Path(params.base_path)
+            
+        if isinstance(self.base_path, str):
+            if not self.base_path.endswith('/'):
+                self.base_path += '/'
+        else:
+            path_str = str(self.base_path)
+            if not path_str.endswith(os.path.sep):
+                self.base_path = Path(f"{path_str}{os.path.sep}")
+                
         self.storage_options = params.storage_options
         self.table_manager = None
 
@@ -545,7 +558,7 @@ class LocalLakeManager(LakeManager):
 
         Example:
             ```python
-            from pdldb.lake_manager import LocalLakeManager
+            from pdldb import LocalLakeManager
             lake_manager = LocalLakeManager("data")
             ```
         """
@@ -553,5 +566,46 @@ class LocalLakeManager(LakeManager):
         super().__init__(params.base_path, params.storage_options)
         self.base_path.mkdir(parents=True, exist_ok=True)
         self.table_manager = LocalTableManager(
+            self.base_path, self.storage_options
+        )
+
+class S3LakeManager(LakeManager):
+    """
+    Implementation of LakeManager for Amazon S3 storage.
+
+    This class extends the base LakeManager to provide specific functionality
+    for managing Delta tables in Amazon S3.
+    """
+
+    def __init__(self, base_path: str, aws_region: str, aws_access_key: str, aws_secret_key: str):
+        """
+        Initialize a new S3LakeManager.
+
+        Args:
+            base_path: The S3 bucket path where the data lake will be stored (e.g., "s3://bucket/prefix/")
+            aws_region: AWS region name (e.g., "us-east-1")
+            aws_access_key: AWS access key ID
+            aws_secret_key: AWS secret access key
+
+        Example:
+            ```python
+            from pdldb import S3LakeManager
+            
+            lake_manager = S3LakeManager(
+                "s3://mybucket/mydatalake/",
+                aws_region="us-east-1",
+                aws_access_key="YOUR_ACCESS_KEY",
+                aws_secret_key="YOUR_SECRET_KEY"
+            )
+            ```
+        """
+        storage_options = {
+            "AWS_REGION": aws_region,
+            "AWS_ACCESS_KEY_ID": aws_access_key,
+            "AWS_SECRET_ACCESS_KEY": aws_secret_key,
+        }
+        params = LakeManagerInitModel(base_path=base_path, storage_options=storage_options)
+        super().__init__(params.base_path, params.storage_options)
+        self.table_manager = S3TableManager(
             str(self.base_path), self.storage_options
         )
