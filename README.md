@@ -1,6 +1,6 @@
 # pdldb
 
-A high-performance analytical data store combining Polars' processing speed with Delta Lake's ACID transactions. This lightweight wrapper provides a database-like experience for local data processing.
+A high-performance analytical data store combining Polars' processing speed with Delta Lake's ACID transactions. This lightweight wrapper provides a database-like experience for local and cloud based data processing.
 
 ## Overview
 
@@ -20,10 +20,8 @@ pdldb creates a columnar data store that offers:
   - User-friendly table lifecycle management
 
 - **Storage Flexibility**:
-  - Local file system storage by default
-  - Local mirroring, backup and restore functionality
-  - S3 mirroring, backup and restore functionality
-  - Coming soon: Full S3-based implementation for cloud-native operations
+  - S3-based implementation for cloud-native operations
+  - Functions on a local file system
 
 ## Installation
 
@@ -114,9 +112,7 @@ More examples can be found in the example folder
 
 This project is in active development. The roadmap is as follows:
 
-- BackupManager refactor
 - Expanded test coverage
-- Full S3-based implementation: Run PDLDB entirely on S3 without local storage requirements
 - User freindly interface for Delta write properties
 - Expanded support for GCS and Azure
 - v2 built in Rust with a python wrapper for compatibility with v1

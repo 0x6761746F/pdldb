@@ -16,16 +16,11 @@ Core components for managing Delta Lake tables.
       show_root_heading: true
       show_source: true
 
-## Backup Managers
-
-Components for backing up and restoring Delta Lake data.
-
-::: pdldb.LocalBackupManager
+::: pdldb.lake_manager.S3LakeManager
     options:
       show_root_heading: true
       show_source: true
 
-::: pdldb.S3BackupManager
-    options:
-      show_root_heading: true
-      show_source: true
+
+
+

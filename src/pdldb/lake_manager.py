@@ -576,14 +576,16 @@ class S3LakeManager(LakeManager):
     for managing Delta tables in Amazon S3.
 
     Notes:
-        Delta Lake guarantees ACID transactions when writing data. When writing to S3,
-        there are two approaches:
+        Delta Lake normally guarantees ACID transactions when writing data; this is done
+        by default when writing to all supported object stores except AWS S3.
+
+        When writing to S3, there are two approaches:
 
         1. Using a DynamoDB locking provider (recommended for production):
-           This ensures safe concurrent writes by using a DynamoDB table to manage locks.
+           This ensures safe concurrent writes (ACID) by using a DynamoDB table to manage locks.
 
-        2. Allowing unsafe renames (faster but not safe for concurrent writes):
-           This approach is faster but doesn't guarantee data consistency with concurrent writes.
+        2. Allowing unsafe renames:
+           This approach doesn't guarantee data consistency with concurrent writes.
     """
 
     def __init__(
@@ -603,7 +605,7 @@ class S3LakeManager(LakeManager):
             aws_access_key: AWS access key ID
             aws_secret_key: AWS secret access key
             dynamodb_locking_table: Optional name of DynamoDB table to use as locking provider.
-                                    If not provided, unsafe renames will be allowed.
+                                    If not provided, unsafe renames will be enabled.
 
         Notes:
             - For production use with concurrent writes, it's strongly recommended to provide
@@ -611,14 +613,14 @@ class S3LakeManager(LakeManager):
             - The DynamoDB table must have the following schema:
               - Partition key: 'tablePath' (String)
               - Sort key: 'fileName' (String)
-            - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe 
-              renames which is faster but doesn't guarantee data consistency with concurrent writes.
+            - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe
+              renames which doesn't guarantee data consistency with concurrent writes.
             - You can create the required DynamoDB table with:
-              ```
-              aws dynamodb create-table \
-                  --table-name delta_log \
-                  --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S \
-                  --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE \
+              ```console
+              aws dynamodb create-table
+                  --table-name delta_log
+                  --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S
+                  --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE
                   --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
               ```
             - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.
@@ -656,8 +658,6 @@ class S3LakeManager(LakeManager):
             storage_options["DELTA_DYNAMO_TABLE_NAME"] = dynamodb_locking_table
         else:
             storage_options["AWS_S3_ALLOW_UNSAFE_RENAME"] = "true"
-
-        input(storage_options)
 
         params = LakeManagerInitModel(
             base_path=base_path, storage_options=storage_options
