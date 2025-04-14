@@ -51,7 +51,7 @@ def initialize_lake():
         base_path="s3://your-bucket-name/delta-lake/",
         aws_region="us-east-1",
         aws_access_key="YOUR_AWS_ACCESS_KEY",
-        aws_secret_key="YOUR_AWS_SECRET_KEY"
+        aws_secret_key="YOUR_AWS_SECRET_KEY",
     )
 
 
@@ -177,7 +177,9 @@ def delete_table(lake):
 
 if __name__ == "__main__":
     print("=== S3 DELTA LAKE EXAMPLE WORKFLOW ===")
-    print("This example demonstrates the full lifecycle of a Delta Lake table stored on S3")
+    print(
+        "This example demonstrates the full lifecycle of a Delta Lake table stored on S3"
+    )
 
     print("\n1. Data Preparation")
     full_df = generate_test_data()
