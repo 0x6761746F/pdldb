@@ -126,19 +126,19 @@ class LakeManager:
         params = LakeManagerInitModel(
             base_path=base_path, storage_options=storage_options
         )
-        if params.base_path.startswith('s3://'):
+        if params.base_path.startswith("s3://"):
             self.base_path = params.base_path
         else:
             self.base_path = Path(params.base_path)
-            
+
         if isinstance(self.base_path, str):
-            if not self.base_path.endswith('/'):
-                self.base_path += '/'
+            if not self.base_path.endswith("/"):
+                self.base_path += "/"
         else:
             path_str = str(self.base_path)
             if not path_str.endswith(os.path.sep):
                 self.base_path = Path(f"{path_str}{os.path.sep}")
-                
+
         self.storage_options = params.storage_options
         self.table_manager = None
 
@@ -565,9 +565,8 @@ class LocalLakeManager(LakeManager):
         params = LakeManagerInitModel(base_path=base_path, storage_options=None)
         super().__init__(params.base_path, params.storage_options)
         self.base_path.mkdir(parents=True, exist_ok=True)
-        self.table_manager = LocalTableManager(
-            self.base_path, self.storage_options
-        )
+        self.table_manager = LocalTableManager(self.base_path, self.storage_options)
+
 
 class S3LakeManager(LakeManager):
     """
@@ -577,7 +576,9 @@ class S3LakeManager(LakeManager):
     for managing Delta tables in Amazon S3.
     """
 
-    def __init__(self, base_path: str, aws_region: str, aws_access_key: str, aws_secret_key: str):
+    def __init__(
+        self, base_path: str, aws_region: str, aws_access_key: str, aws_secret_key: str, dynamodb_locking_table: Optional[str] = None
+    ):
         """
         Initialize a new S3LakeManager.
 
@@ -590,7 +591,7 @@ class S3LakeManager(LakeManager):
         Example:
             ```python
             from pdldb import S3LakeManager
-            
+
             lake_manager = S3LakeManager(
                 "s3://mybucket/mydatalake/",
                 aws_region="us-east-1",
@@ -604,8 +605,15 @@ class S3LakeManager(LakeManager):
             "AWS_ACCESS_KEY_ID": aws_access_key,
             "AWS_SECRET_ACCESS_KEY": aws_secret_key,
         }
-        params = LakeManagerInitModel(base_path=base_path, storage_options=storage_options)
-        super().__init__(params.base_path, params.storage_options)
-        self.table_manager = S3TableManager(
-            str(self.base_path), self.storage_options
+
+        if dynamodb_locking_table:
+            storage_options["AWS_S3_LOCKING_PROVIDER"] = 'dynamodb'
+            storage_options["DELTA_DYNAMO_TABLE_NAME"] = dynamodb_locking_table
+        else:
+            storage_options["AWS_S3_ALLOW_UNSAFE_RENAME"] = 'true'
+
+        params = LakeManagerInitModel(
+            base_path=base_path, storage_options=storage_options
         )
+        super().__init__(params.base_path, params.storage_options)
+        self.table_manager = S3TableManager(str(self.base_path), self.storage_options)

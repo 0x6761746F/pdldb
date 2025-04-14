@@ -145,7 +145,9 @@ class BaseTableManager(ABC):
 
     def get_data_frame(self, table_name: str) -> pl.DataFrame:
         try:
-            return pl.read_delta(self._get_full_path(table_name), storage_options=self.storage_options)
+            return pl.read_delta(
+                self._get_full_path(table_name), storage_options=self.storage_options
+            )
         except (TableNotFoundError, FileNotFoundError) as e:
             if table_name in self.tables:
                 schema = self.tables[table_name].table_schema
@@ -157,7 +159,9 @@ class BaseTableManager(ABC):
 
     def get_lazy_frame(self, table_name: str) -> pl.LazyFrame:
         try:
-            return pl.scan_delta(self._get_full_path(table_name), storage_options=self.storage_options)
+            return pl.scan_delta(
+                self._get_full_path(table_name), storage_options=self.storage_options
+            )
         except (TableNotFoundError, FileNotFoundError) as e:
             if table_name in self.tables:
                 schema = self.tables[table_name].table_schema
@@ -178,7 +182,7 @@ class BaseTableManager(ABC):
             delta_table = DeltaTable(
                 self._get_full_path(table_name), storage_options=self.storage_options
             )
-    
+
             str(
                 delta_table.optimize.compact(
                     target_size=target_size,
@@ -187,9 +191,7 @@ class BaseTableManager(ABC):
                 )
             )
         except (TableNotFoundError, FileNotFoundError) as e:
-            raise ValueError(
-                f"Table '{table_name}' does not exist or has no data: {e}"
-            )
+            raise ValueError(f"Table '{table_name}' does not exist or has no data: {e}")
 
     def vacuum_table(
         self,
@@ -209,9 +211,7 @@ class BaseTableManager(ABC):
                 )
             )
         except (TableNotFoundError, FileNotFoundError) as e:
-            raise ValueError(
-                f"Table '{table_name}' does not exist or has no data: {e}"
-            )
+            raise ValueError(f"Table '{table_name}' does not exist or has no data: {e}")
 
     def list_tables(self) -> Dict[str, Dict[str, Any]]:
         return {name: self.get_table_info(name) for name in self.tables.keys()}
@@ -219,7 +219,7 @@ class BaseTableManager(ABC):
     def get_table_info(self, table_name: str) -> dict:
         table_path = self._get_full_path(table_name)
         base_table = self.tables[table_name]
-        
+
         table_info = {
             "exists": False,
             "version": 0,
@@ -228,15 +228,15 @@ class BaseTableManager(ABC):
             "schema": base_table.table_schema,
             "primary_keys": base_table.primary_keys,
         }
-        
+
         try:
             dt = DeltaTable(table_path, storage_options=self.storage_options)
-        
+
             size = 0
             path_obj = Path(table_path)
             if path_obj.exists():
                 size = len(list(path_obj.glob("*.parquet")))
-                
+
             return {
                 "exists": True,
                 "version": dt.version(),
