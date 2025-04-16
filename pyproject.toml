@@ -1,6 +1,6 @@
 [project]
 name = "pdldb"
-version = "0.1.7"
+version = "0.1.8"
 description = "A high-performance analytical data store combining Polars' processing speed with Delta Lake's ACID transactions. This lightweight wrapper provides a database-like experience for local and cloud based data processing."
 readme = "README.md"
 authors = [
@@ -21,6 +21,12 @@ pdldb = "pdldb:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+  ".env",
+  "*.env",
+]
 
 [dependency-groups]
 dev = [
