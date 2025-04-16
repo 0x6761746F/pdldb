@@ -3,7 +3,6 @@ from pdldb.base_table_validator import BaseTable
 from deltalake import DeltaTable
 from typing import Dict, Optional
 import shutil
-from pathlib import Path
 
 
 class LocalTableManager(BaseTableManager):

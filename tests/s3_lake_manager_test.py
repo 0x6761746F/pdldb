@@ -1,4 +1,3 @@
-import os
 import pytest
 import polars as pl
 from unittest.mock import patch, MagicMock
