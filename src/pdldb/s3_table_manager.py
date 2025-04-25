@@ -18,7 +18,7 @@ class S3TableManager(BaseTableManager):
             raise ValueError("S3TableManager requires an S3 URL (s3://...)")
 
         self.bucket_name = parsed_url.netloc
-        
+
         self.prefix = parsed_url.path.lstrip("/")
         if self.prefix and not self.prefix.endswith("/"):
             self.prefix += "/"
@@ -37,7 +37,7 @@ class S3TableManager(BaseTableManager):
             result = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name, Prefix=self.prefix, Delimiter="/"
             )
-            
+
             if "CommonPrefixes" not in result:
                 return
 
@@ -51,21 +51,30 @@ class S3TableManager(BaseTableManager):
                     MaxKeys=1,
                 )
 
-                if "Contents" in delta_log_check and len(delta_log_check["Contents"]) > 0:
+                if (
+                    "Contents" in delta_log_check
+                    and len(delta_log_check["Contents"]) > 0
+                ):
                     try:
                         full_table_path = f"s3://{self.bucket_name}/{table_prefix}"
-                        
-                        storage_opts = self.storage_options.copy() if self.storage_options else {}
-                        
+
+                        storage_opts = (
+                            self.storage_options.copy() if self.storage_options else {}
+                        )
+
                         dt = DeltaTable(
                             full_table_path,
                             storage_options=storage_opts,
                         )
 
-                        primary_keys = dt.metadata().description or "unknown_primary_keys"
+                        primary_keys = (
+                            dt.metadata().description or "unknown_primary_keys"
+                        )
 
                         pa_schema = dt.schema().to_pyarrow()
-                        schema_dict = {field.name: str(field.type) for field in pa_schema}
+                        schema_dict = {
+                            field.name: str(field.type) for field in pa_schema
+                        }
 
                         base_table = BaseTable(
                             name=table_name,
@@ -79,9 +88,7 @@ class S3TableManager(BaseTableManager):
                         ) from e
 
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to load existing tables from S3: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to load existing tables from S3: {e}") from e
 
     def delete_table(self, table_name: str) -> bool:
         try:
