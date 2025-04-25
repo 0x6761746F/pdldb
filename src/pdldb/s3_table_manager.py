@@ -22,8 +22,6 @@ class S3TableManager(BaseTableManager):
         self.prefix = parsed_url.path.lstrip("/")
         if self.prefix and not self.prefix.endswith("/"):
             self.prefix += "/"
-            
-        print(f"S3TableManager initialized with bucket: {self.bucket_name}, prefix: {self.prefix}")
 
         self.s3_client = boto3.client(
             "s3",
@@ -36,25 +34,16 @@ class S3TableManager(BaseTableManager):
 
     def _load_existing_tables(self) -> None:
         try:
-            print(f"Looking for tables in bucket: {self.bucket_name}, prefix: {self.prefix}")
-            
             result = self.s3_client.list_objects_v2(
                 Bucket=self.bucket_name, Prefix=self.prefix, Delimiter="/"
             )
             
             if "CommonPrefixes" not in result:
-                print(f"No CommonPrefixes found in response. Response keys: {list(result.keys())}")
-                if "Contents" in result:
-                    print(f"Found {len(result['Contents'])} objects in the prefix")
                 return
 
-            print(f"Found {len(result['CommonPrefixes'])} potential table directories")
-            
             for prefix in result["CommonPrefixes"]:
                 table_prefix = prefix["Prefix"]
                 table_name = os.path.basename(table_prefix.rstrip("/"))
-                
-                print(f"Checking prefix: {table_prefix} for table name: {table_name}")
 
                 delta_log_check = self.s3_client.list_objects_v2(
                     Bucket=self.bucket_name,
@@ -63,14 +52,10 @@ class S3TableManager(BaseTableManager):
                 )
 
                 if "Contents" in delta_log_check and len(delta_log_check["Contents"]) > 0:
-                    print(f"Found Delta table: {table_name}")
-                    
                     try:
                         full_table_path = f"s3://{self.bucket_name}/{table_prefix}"
-                        print(f"Loading Delta table from path: {full_table_path}")
                         
                         storage_opts = self.storage_options.copy() if self.storage_options else {}
-                        print(f"Using storage options: {storage_opts}")
                         
                         dt = DeltaTable(
                             full_table_path,
@@ -78,11 +63,9 @@ class S3TableManager(BaseTableManager):
                         )
 
                         primary_keys = dt.metadata().description or "unknown_primary_keys"
-                        print(f"Table {table_name} primary keys: {primary_keys}")
 
                         pa_schema = dt.schema().to_pyarrow()
                         schema_dict = {field.name: str(field.type) for field in pa_schema}
-                        print(f"Table {table_name} schema has {len(schema_dict)} fields")
 
                         base_table = BaseTable(
                             name=table_name,
@@ -90,21 +73,15 @@ class S3TableManager(BaseTableManager):
                             primary_keys=primary_keys,
                         )
                         self.tables[table_name] = base_table
-                        print(f"Successfully added table {table_name} to manager")
                     except Exception as e:
-                        print(f"Error loading Delta table {table_name}: {str(e)}")
-                        import traceback
-                        print(traceback.format_exc())
-                else:
-                    print(f"No _delta_log found for {table_prefix}")
-
-            print(f"Loaded {len(self.tables)} tables: {list(self.tables.keys())}")
+                        raise RuntimeError(
+                            f"Failed to load Delta table {table_name}: {e}"
+                        ) from e
 
         except Exception as e:
-            print(f"Error loading existing tables: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-
+            raise RuntimeError(
+                f"Failed to load existing tables from S3: {e}"
+            ) from e
 
     def delete_table(self, table_name: str) -> bool:
         try:

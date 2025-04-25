@@ -126,73 +126,72 @@ def test_load_existing_tables():
             {"Contents": [{"Key": f"{TEST_PREFIX}/table2/_delta_log/00000.json"}]},
         ]
 
-        with patch("deltalake.DeltaTable") as mock_dt:
-            mock_dt_instance1 = MagicMock()
-            mock_dt_instance2 = MagicMock()
+        # Create mock DeltaTable instances with their methods set up
+        mock_dt_instance1 = MagicMock()
+        mock_dt_instance2 = MagicMock()
+        
+        # Set up metadata for each mock instance
+        mock_metadata1 = MagicMock()
+        mock_metadata1.description = "id"
+        mock_metadata2 = MagicMock()
+        mock_metadata2.description = "user_id,timestamp"
+        
+        # Configure the mock instances
+        mock_dt_instance1.metadata.return_value = mock_metadata1
+        mock_dt_instance2.metadata.return_value = mock_metadata2
+        
+        # Set up schema mocks
+        mock_schema1 = MagicMock()
+        mock_schema2 = MagicMock()
+        mock_dt_instance1.schema.return_value = mock_schema1
+        mock_dt_instance2.schema.return_value = mock_schema2
+        
+        pa_schema1 = MagicMock()
+        pa_schema2 = MagicMock()
+        mock_schema1.to_pyarrow.return_value = pa_schema1
+        mock_schema2.to_pyarrow.return_value = pa_schema2
+        
+        # Set up field mocks
+        field1 = MagicMock()
+        field1.name = "id"
+        field1.type = "int32"
+        
+        field2 = MagicMock()
+        field2.name = "name"
+        field2.type = "string"
+        
+        field3 = MagicMock()
+        field3.name = "user_id"
+        field3.type = "int32"
+        
+        field4 = MagicMock()
+        field4.name = "timestamp"
+        field4.type = "timestamp[ns]"
+        
+        # Configure schema field iteration
+        pa_schema1.__iter__ = lambda _: iter([field1, field2])
+        pa_schema2.__iter__ = lambda _: iter([field3, field4])
+        
+        # Patch DeltaTable to return our mock instances
+        with patch("pdldb.s3_table_manager.DeltaTable") as mock_dt:
+            # Set up the mock to return different instances on each call
             mock_dt.side_effect = [mock_dt_instance1, mock_dt_instance2]
-
-            mock_metadata1 = {"description": "id"}
-            mock_dt_instance1.metadata.return_value = mock_metadata1
-
-            mock_metadata2 = {"description": "user_id,timestamp"}
-            mock_dt_instance2.metadata.return_value = mock_metadata2
-
-            mock_schema1 = MagicMock()
-            mock_schema2 = MagicMock()
-            mock_dt_instance1.schema.return_value = mock_schema1
-            mock_dt_instance2.schema.return_value = mock_schema2
-
-            pa_schema1 = MagicMock()
-            pa_schema2 = MagicMock()
-            mock_schema1.to_pyarrow.return_value = pa_schema1
-            mock_schema2.to_pyarrow.return_value = pa_schema2
-
-            field1 = MagicMock()
-            field1.name = "id"
-            field1.type = "int32"
-
-            field2 = MagicMock()
-            field2.name = "name"
-            field2.type = "string"
-
-            field3 = MagicMock()
-            field3.name = "user_id"
-            field3.type = "int32"
-
-            field4 = MagicMock()
-            field4.name = "timestamp"
-            field4.type = "timestamp[ns]"
-
-            pa_schema1.__iter__ = lambda _: iter([field1, field2])
-            pa_schema2.__iter__ = lambda _: iter([field3, field4])
-
+            
+            # Create the S3LakeManager with our mocks
             manager = S3LakeManager(
                 TEST_S3_PATH,
                 aws_region=TEST_REGION,
                 aws_access_key=TEST_ACCESS_KEY,
                 aws_secret_key=TEST_SECRET_KEY,
             )
-
-            manager.table_manager.tables = {
-                "table1": BaseTable(
-                    name="table1",
-                    table_schema={"id": "int32", "name": "string"},
-                    primary_keys="id",
-                ),
-                "table2": BaseTable(
-                    name="table2",
-                    table_schema={"user_id": "int32", "timestamp": "timestamp[ns]"},
-                    primary_keys="user_id,timestamp",
-                ),
-            }
-
+            
+            # Verify the tables were loaded correctly
             assert "table1" in manager.table_manager.tables
             assert "table2" in manager.table_manager.tables
             assert manager.table_manager.tables["table1"].primary_keys == "id"
-            assert (
-                manager.table_manager.tables["table2"].primary_keys
-                == "user_id,timestamp"
-            )
+            assert manager.table_manager.tables["table2"].primary_keys == "user_id,timestamp"
+            assert manager.table_manager.tables["table1"].table_schema == {"id": "int32", "name": "string"}
+            assert manager.table_manager.tables["table2"].table_schema == {"user_id": "int32", "timestamp": "timestamp[ns]"}
 
 
 def test_create_table(s3_lake_manager):
