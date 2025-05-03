@@ -572,86 +572,72 @@ class S3LakeManager(LakeManager):
     """
     Implementation of LakeManager for Amazon S3 storage.
 
-    This class extends the base LakeManager to provide specific functionality
-    for managing Delta tables in Amazon S3.
-
-    Notes:
-        Delta Lake normally guarantees ACID transactions when writing data; this is done
-        by default when writing to all supported object stores except AWS S3.
-
-        When writing to S3, there are two approaches:
-
-        1. Using a DynamoDB locking provider (recommended for production):
-           This ensures safe concurrent writes (ACID) by using a DynamoDB table to manage locks.
-
-        2. Allowing unsafe renames:
-           This approach doesn't guarantee data consistency with concurrent writes.
+    Handles both explicit credential passing and automatic credential discovery
+    (e.g., via IAM roles in Lambda/EC2 environments).
+    Supports DynamoDB locking for safe concurrent writes.
     """
 
     def __init__(
         self,
         base_path: str,
-        aws_region: str,
-        aws_access_key: str,
-        aws_secret_key: str,
+        aws_region: Optional[str] = None,
+        aws_access_key: Optional[str] = None,
+        aws_secret_key: Optional[str] = None,
         dynamodb_locking_table: Optional[str] = None,
     ):
         """
         Initialize a new S3LakeManager.
 
         Args:
-            base_path: The S3 bucket path where the data lake will be stored (e.g., "s3://bucket/prefix/")
-            aws_region: AWS region name (e.g., "us-east-1")
-            aws_access_key: AWS access key ID
-            aws_secret_key: AWS secret access key
-            dynamodb_locking_table: Optional name of DynamoDB table to use as locking provider.
-                                    If not provided, unsafe renames will be enabled.
+            base_path: The S3 bucket path (e.g., "s3://bucket/prefix/").
+            aws_region: Optional AWS region name (e.g., "us-east-1"). If None, SDK attempts discovery.
+            aws_access_key: Optional AWS access key ID. If None, SDK attempts discovery.
+            aws_secret_key: Optional AWS secret key. If None, SDK attempts discovery.
+            dynamodb_locking_table: Optional name of DynamoDB table for locking. If None,
+                                    enables unsafe renames (NOT safe for concurrent writes).
 
         Notes:
+            - Automatic Credentials (Recommended for AWS Environments): If aws_access_key,
+            aws_secret_key, and aws_session_token are all None (default), relies on the
+            standard AWS SDK credential chain (e.g., Lambda/EC2 IAM roles, environment vars,
+            ~/.aws/credentials).
+            - Explicit Credentials: Provide aws_access_key and aws_secret_key (and token if temporary)
+            to use specific credentials. Both key and secret are required if one is provided.
             - For production use with concurrent writes, it's strongly recommended to provide
-              a DynamoDB table for locking to ensure ACID guarantees.
+            a DynamoDB table for locking to ensure ACID guarantees.
             - The DynamoDB table must have the following schema:
-              - Partition key: 'tablePath' (String)
-              - Sort key: 'fileName' (String)
+            - Partition key: 'tablePath' (String)
+            - Sort key: 'fileName' (String)
             - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe
-              renames which doesn't guarantee data consistency with concurrent writes.
+            renames which doesn't guarantee data consistency with concurrent writes.
             - You can create the required DynamoDB table with:
-              ```console
-              aws dynamodb create-table
-                  --table-name delta_log
-                  --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S
-                  --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE
-                  --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
-              ```
-            - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.
-
-        Example:
-            ```python
-            from pdldb import S3LakeManager
-
-            # Using unsafe renames (not safe for concurrent writes)
-            lake_manager = S3LakeManager(
-                "s3://mybucket/mydatalake/",
-                aws_region="us-east-1",
-                aws_access_key="YOUR_ACCESS_KEY",
-                aws_secret_key="YOUR_SECRET_KEY"
-            )
-
-            # Using DynamoDB locking provider (safe for concurrent writes)
-            lake_manager = S3LakeManager(
-                "s3://mybucket/mydatalake/",
-                aws_region="us-east-1",
-                aws_access_key="YOUR_ACCESS_KEY",
-                aws_secret_key="YOUR_SECRET_KEY",
-                dynamodb_locking_table="delta_log"
-            )
+            ```console
+            aws dynamodb create-table
+                --table-name delta_log
+                --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S
+                --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE
+                --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
             ```
+            - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.
         """
-        storage_options = {
-            "AWS_REGION": aws_region,
-            "AWS_ACCESS_KEY_ID": aws_access_key,
-            "AWS_SECRET_ACCESS_KEY": aws_secret_key,
-        }
+        storage_options = {}
+
+        if aws_region:
+            storage_options["AWS_REGION"] = aws_region
+        elif os.getenv("AWS_REGION"):
+            storage_options["AWS_REGION"] = os.getenv("AWS_REGION")
+        elif os.getenv("AWS_DEFAULT_REGION"):
+            storage_options["AWS_REGION"] = os.getenv("AWS_DEFAULT_REGION")
+
+        if aws_access_key and aws_secret_key:
+            storage_options["AWS_ACCESS_KEY_ID"] = aws_access_key
+            storage_options["AWS_SECRET_ACCESS_KEY"] = aws_secret_key
+
+        elif aws_access_key or aws_secret_key:
+            raise ValueError(
+                "If providing explicit AWS credentials, both 'aws_access_key' and "
+                "'aws_secret_key' must be provided."
+            )
 
         if dynamodb_locking_table:
             storage_options["AWS_S3_LOCKING_PROVIDER"] = "dynamodb"
@@ -663,4 +649,5 @@ class S3LakeManager(LakeManager):
             base_path=base_path, storage_options=storage_options
         )
         super().__init__(params.base_path, params.storage_options)
+
         self.table_manager = S3TableManager(str(self.base_path), self.storage_options)
