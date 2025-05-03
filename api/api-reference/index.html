@@ -3980,26 +3980,10 @@ for managing Delta tables in a local filesystem.</p>
 
 
         <p>Implementation of LakeManager for Amazon S3 storage.</p>
-<p>This class extends the base LakeManager to provide specific functionality
-for managing Delta tables in Amazon S3.</p>
+<p>Handles both explicit credential passing and automatic credential discovery
+(e.g., via IAM roles in Lambda/EC2 environments).
+Supports DynamoDB locking for safe concurrent writes.</p>
 
-
-<details class="notes" open>
-  <summary>Notes</summary>
-  <p>Delta Lake normally guarantees ACID transactions when writing data; this is done
-by default when writing to all supported object stores except AWS S3.</p>
-<p>When writing to S3, there are two approaches:</p>
-<ol>
-<li>
-<p>Using a DynamoDB locking provider (recommended for production):
-   This ensures safe concurrent writes (ACID) by using a DynamoDB table to manage locks.</p>
-</li>
-<li>
-<p>Allowing unsafe renames:
-   This approach doesn't guarantee data consistency with concurrent writes.</p>
-</li>
-</ol>
-</details>
 
 
 
@@ -4090,115 +4074,89 @@ by default when writing to all supported object stores except AWS S3.</p>
 <span class="normal"><a href="#__codelineno-0-650">650</a></span>
 <span class="normal"><a href="#__codelineno-0-651">651</a></span>
 <span class="normal"><a href="#__codelineno-0-652">652</a></span>
-<span class="normal"><a href="#__codelineno-0-653">653</a></span>
-<span class="normal"><a href="#__codelineno-0-654">654</a></span>
-<span class="normal"><a href="#__codelineno-0-655">655</a></span>
-<span class="normal"><a href="#__codelineno-0-656">656</a></span>
-<span class="normal"><a href="#__codelineno-0-657">657</a></span>
-<span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span>
-<span class="normal"><a href="#__codelineno-0-660">660</a></span>
-<span class="normal"><a href="#__codelineno-0-661">661</a></span>
-<span class="normal"><a href="#__codelineno-0-662">662</a></span>
-<span class="normal"><a href="#__codelineno-0-663">663</a></span>
-<span class="normal"><a href="#__codelineno-0-664">664</a></span>
-<span class="normal"><a href="#__codelineno-0-665">665</a></span>
-<span class="normal"><a href="#__codelineno-0-666">666</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="k">class</span><span class="w"> </span><span class="nc">S3LakeManager</span><span class="p">(</span><span class="n">LakeManager</span><span class="p">):</span>
+<span class="normal"><a href="#__codelineno-0-653">653</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="k">class</span><span class="w"> </span><span class="nc">S3LakeManager</span><span class="p">(</span><span class="n">LakeManager</span><span class="p">):</span>
 <a id="__codelineno-0-572" name="__codelineno-0-572"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="sd">    Implementation of LakeManager for Amazon S3 storage.</span>
 <a id="__codelineno-0-574" name="__codelineno-0-574"></a>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="sd">    This class extends the base LakeManager to provide specific functionality</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">    for managing Delta tables in Amazon S3.</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">    Notes:</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">        Delta Lake normally guarantees ACID transactions when writing data; this is done</span>
-<a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">        by default when writing to all supported object stores except AWS S3.</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">        When writing to S3, there are two approaches:</span>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">        1. Using a DynamoDB locking provider (recommended for production):</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">           This ensures safe concurrent writes (ACID) by using a DynamoDB table to manage locks.</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">        2. Allowing unsafe renames:</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">           This approach doesn&#39;t guarantee data consistency with concurrent writes.</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="sd">    Handles both explicit credential passing and automatic credential discovery</span>
+<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">    (e.g., via IAM roles in Lambda/EC2 environments).</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">    Supports DynamoDB locking for safe concurrent writes.</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a>
+<a id="__codelineno-0-580" name="__codelineno-0-580"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a>        <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a>        <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a>        <span class="n">aws_region</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a>        <span class="n">aws_access_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a>        <span class="n">aws_secret_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a>        <span class="n">dynamodb_locking_table</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="p">):</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">        Initialize a new S3LakeManager.</span>
 <a id="__codelineno-0-590" name="__codelineno-0-590"></a>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a>        <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a>        <span class="n">aws_region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a>        <span class="n">aws_access_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a>        <span class="n">aws_secret_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a>        <span class="n">dynamodb_locking_table</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a>    <span class="p">):</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">        Initialize a new S3LakeManager.</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">            base_path: The S3 bucket path where the data lake will be stored (e.g., &quot;s3://bucket/prefix/&quot;)</span>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">            aws_region: AWS region name (e.g., &quot;us-east-1&quot;)</span>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">            aws_access_key: AWS access key ID</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">            aws_secret_key: AWS secret access key</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">            dynamodb_locking_table: Optional name of DynamoDB table to use as locking provider.</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">                                    If not provided, unsafe renames will be enabled.</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">        Notes:</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">            - For production use with concurrent writes, it&#39;s strongly recommended to provide</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">              a DynamoDB table for locking to ensure ACID guarantees.</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">            - The DynamoDB table must have the following schema:</span>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">              - Partition key: &#39;tablePath&#39; (String)</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">              - Sort key: &#39;fileName&#39; (String)</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">            - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">              renames which doesn&#39;t guarantee data consistency with concurrent writes.</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            - You can create the required DynamoDB table with:</span>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">              ```console</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">              aws dynamodb create-table</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">                  --table-name delta_log</span>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">                  --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">                  --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">                  --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">              ```</span>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">            - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">        Example:</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">            from pdldb import S3LakeManager</span>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">            base_path: The S3 bucket path (e.g., &quot;s3://bucket/prefix/&quot;).</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">            aws_region: Optional AWS region name (e.g., &quot;us-east-1&quot;). If None, SDK attempts discovery.</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">            aws_access_key: Optional AWS access key ID. If None, SDK attempts discovery.</span>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">            aws_secret_key: Optional AWS secret key. If None, SDK attempts discovery.</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">            dynamodb_locking_table: Optional name of DynamoDB table for locking. If None,</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">                                    enables unsafe renames (NOT safe for concurrent writes).</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">        Notes:</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">            - Automatic Credentials (Recommended for AWS Environments): If aws_access_key,</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">            aws_secret_key, and aws_session_token are all None (default), relies on the</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">            standard AWS SDK credential chain (e.g., Lambda/EC2 IAM roles, environment vars,</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">            ~/.aws/credentials).</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">            - Explicit Credentials: Provide aws_access_key and aws_secret_key (and token if temporary)</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">            to use specific credentials. Both key and secret are required if one is provided.</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">            - For production use with concurrent writes, it&#39;s strongly recommended to provide</span>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">            a DynamoDB table for locking to ensure ACID guarantees.</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">            - The DynamoDB table must have the following schema:</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">            - Partition key: &#39;tablePath&#39; (String)</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">            - Sort key: &#39;fileName&#39; (String)</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">            - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">            renames which doesn&#39;t guarantee data consistency with concurrent writes.</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">            - You can create the required DynamoDB table with:</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">            ```console</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">            aws dynamodb create-table</span>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">                --table-name delta_log</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">                --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">                --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">                --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">            - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        &quot;&quot;&quot;</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a>        <span class="n">storage_options</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a>        <span class="k">if</span> <span class="n">aws_region</span><span class="p">:</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aws_region</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a>        <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a>        <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_DEFAULT_REGION&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_DEFAULT_REGION&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-631" name="__codelineno-0-631"></a>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">            # Using unsafe renames (not safe for concurrent writes)</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">            lake_manager = S3LakeManager(</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">                &quot;s3://mybucket/mydatalake/&quot;,</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">                aws_region=&quot;us-east-1&quot;,</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">                aws_access_key=&quot;YOUR_ACCESS_KEY&quot;,</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">                aws_secret_key=&quot;YOUR_SECRET_KEY&quot;</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">            )</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">            # Using DynamoDB locking provider (safe for concurrent writes)</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">            lake_manager = S3LakeManager(</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">                &quot;s3://mybucket/mydatalake/&quot;,</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">                aws_region=&quot;us-east-1&quot;,</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">                aws_access_key=&quot;YOUR_ACCESS_KEY&quot;,</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">                aws_secret_key=&quot;YOUR_SECRET_KEY&quot;,</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">                dynamodb_locking_table=&quot;delta_log&quot;</span>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">            )</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">        &quot;&quot;&quot;</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="n">storage_options</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>            <span class="s2">&quot;AWS_REGION&quot;</span><span class="p">:</span> <span class="n">aws_region</span><span class="p">,</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>            <span class="s2">&quot;AWS_ACCESS_KEY_ID&quot;</span><span class="p">:</span> <span class="n">aws_access_key</span><span class="p">,</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>            <span class="s2">&quot;AWS_SECRET_ACCESS_KEY&quot;</span><span class="p">:</span> <span class="n">aws_secret_key</span><span class="p">,</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="p">}</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="k">if</span> <span class="n">dynamodb_locking_table</span><span class="p">:</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_LOCKING_PROVIDER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dynamodb&quot;</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;DELTA_DYNAMO_TABLE_NAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamodb_locking_table</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_ALLOW_UNSAFE_RENAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a>        <span class="n">params</span> <span class="o">=</span> <span class="n">LakeManagerInitModel</span><span class="p">(</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a>            <span class="n">base_path</span><span class="o">=</span><span class="n">base_path</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a>        <span class="p">)</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">base_path</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">table_manager</span> <span class="o">=</span> <span class="n">S3TableManager</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>        <span class="k">if</span> <span class="n">aws_access_key</span> <span class="ow">and</span> <span class="n">aws_secret_key</span><span class="p">:</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_ACCESS_KEY_ID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aws_access_key</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_SECRET_ACCESS_KEY&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aws_secret_key</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>        <span class="k">elif</span> <span class="n">aws_access_key</span> <span class="ow">or</span> <span class="n">aws_secret_key</span><span class="p">:</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a>                <span class="s2">&quot;If providing explicit AWS credentials, both &#39;aws_access_key&#39; and &quot;</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a>                <span class="s2">&quot;&#39;aws_secret_key&#39; must be provided.&quot;</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a>            <span class="p">)</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a>        <span class="k">if</span> <span class="n">dynamodb_locking_table</span><span class="p">:</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_LOCKING_PROVIDER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dynamodb&quot;</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;DELTA_DYNAMO_TABLE_NAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamodb_locking_table</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a>            <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_ALLOW_UNSAFE_RENAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>        <span class="n">params</span> <span class="o">=</span> <span class="n">LakeManagerInitModel</span><span class="p">(</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>            <span class="n">base_path</span><span class="o">=</span><span class="n">base_path</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="p">)</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">base_path</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">table_manager</span> <span class="o">=</span> <span class="n">S3TableManager</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -4218,7 +4176,7 @@ by default when writing to all supported object stores except AWS S3.</p>
 
 
 <h4 id="pdldb.lake_manager.S3LakeManager.__init__" class="doc doc-heading">
-            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">aws_region</span><span class="p">,</span> <span class="n">aws_access_key</span><span class="p">,</span> <span class="n">aws_secret_key</span><span class="p">,</span> <span class="n">dynamodb_locking_table</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="n">aws_region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aws_access_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aws_secret_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dynamodb_locking_table</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 </h4>
 
@@ -4242,7 +4200,7 @@ by default when writing to all supported object stores except AWS S3.</p>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>The S3 bucket path where the data lake will be stored (e.g., "s3://bucket/prefix/")</p>
+                <p>The S3 bucket path (e.g., "s3://bucket/prefix/").</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -4258,12 +4216,16 @@ by default when writing to all supported object stores except AWS S3.</p>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>AWS region name (e.g., "us-east-1")</p>
+                <p>Optional AWS region name (e.g., "us-east-1"). If None, SDK attempts discovery.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><span title="str">str</span></code>
+                      <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>None</code>
                   </span>
               </p>
             </td>
@@ -4274,12 +4236,16 @@ by default when writing to all supported object stores except AWS S3.</p>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>AWS access key ID</p>
+                <p>Optional AWS access key ID. If None, SDK attempts discovery.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><span title="str">str</span></code>
+                      <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>None</code>
                   </span>
               </p>
             </td>
@@ -4290,12 +4256,16 @@ by default when writing to all supported object stores except AWS S3.</p>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>AWS secret access key</p>
+                <p>Optional AWS secret key. If None, SDK attempts discovery.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><span title="str">str</span></code>
+                      <code><span title="typing.Optional">Optional</span>[<span title="str">str</span>]</code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>None</code>
                   </span>
               </p>
             </td>
@@ -4306,8 +4276,8 @@ by default when writing to all supported object stores except AWS S3.</p>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>Optional name of DynamoDB table to use as locking provider.
-                    If not provided, unsafe renames will be enabled.</p>
+                <p>Optional name of DynamoDB table for locking. If None,
+                    enables unsafe renames (NOT safe for concurrent writes).</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -4328,15 +4298,21 @@ by default when writing to all supported object stores except AWS S3.</p>
 <details class="notes" open>
   <summary>Notes</summary>
   <ul>
+<li>Automatic Credentials (Recommended for AWS Environments): If aws_access_key,
+aws_secret_key, and aws_session_token are all None (default), relies on the
+standard AWS SDK credential chain (e.g., Lambda/EC2 IAM roles, environment vars,
+~/.aws/credentials).</li>
+<li>Explicit Credentials: Provide aws_access_key and aws_secret_key (and token if temporary)
+to use specific credentials. Both key and secret are required if one is provided.</li>
 <li>For production use with concurrent writes, it's strongly recommended to provide
-  a DynamoDB table for locking to ensure ACID guarantees.</li>
+a DynamoDB table for locking to ensure ACID guarantees.</li>
 <li>The DynamoDB table must have the following schema:</li>
 <li>Partition key: 'tablePath' (String)</li>
 <li>Sort key: 'fileName' (String)</li>
 <li>If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe
-  renames which doesn't guarantee data consistency with concurrent writes.</li>
+renames which doesn't guarantee data consistency with concurrent writes.</li>
 <li>You can create the required DynamoDB table with:
-  <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">aws dynamodb create-table</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">aws dynamodb create-table</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="go">    --table-name delta_log</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="go">    --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="go">    --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE</span>
@@ -4346,32 +4322,20 @@ by default when writing to all supported object stores except AWS S3.</p>
 </ul>
 </details>
 
-<details class="example" open>
-  <summary>Example</summary>
-  <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pdldb</span><span class="w"> </span><span class="kn">import</span> <span class="n">S3LakeManager</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Using unsafe renames (not safe for concurrent writes)</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">lake_manager</span> <span class="o">=</span> <span class="n">S3LakeManager</span><span class="p">(</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s2">&quot;s3://mybucket/mydatalake/&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">aws_region</span><span class="o">=</span><span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">aws_access_key</span><span class="o">=</span><span class="s2">&quot;YOUR_ACCESS_KEY&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">aws_secret_key</span><span class="o">=</span><span class="s2">&quot;YOUR_SECRET_KEY&quot;</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># Using DynamoDB locking provider (safe for concurrent writes)</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">lake_manager</span> <span class="o">=</span> <span class="n">S3LakeManager</span><span class="p">(</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="s2">&quot;s3://mybucket/mydatalake/&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">aws_region</span><span class="o">=</span><span class="s2">&quot;us-east-1&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">aws_access_key</span><span class="o">=</span><span class="s2">&quot;YOUR_ACCESS_KEY&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">aws_secret_key</span><span class="o">=</span><span class="s2">&quot;YOUR_SECRET_KEY&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">dynamodb_locking_table</span><span class="o">=</span><span class="s2">&quot;delta_log&quot;</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="p">)</span>
-</code></pre></div>
-</details>
-
             <details class="quote">
               <summary>Source code in <code>src/pdldb/lake_manager.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-591">591</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-580">580</a></span>
+<span class="normal"><a href="#__codelineno-0-581">581</a></span>
+<span class="normal"><a href="#__codelineno-0-582">582</a></span>
+<span class="normal"><a href="#__codelineno-0-583">583</a></span>
+<span class="normal"><a href="#__codelineno-0-584">584</a></span>
+<span class="normal"><a href="#__codelineno-0-585">585</a></span>
+<span class="normal"><a href="#__codelineno-0-586">586</a></span>
+<span class="normal"><a href="#__codelineno-0-587">587</a></span>
+<span class="normal"><a href="#__codelineno-0-588">588</a></span>
+<span class="normal"><a href="#__codelineno-0-589">589</a></span>
+<span class="normal"><a href="#__codelineno-0-590">590</a></span>
+<span class="normal"><a href="#__codelineno-0-591">591</a></span>
 <span class="normal"><a href="#__codelineno-0-592">592</a></span>
 <span class="normal"><a href="#__codelineno-0-593">593</a></span>
 <span class="normal"><a href="#__codelineno-0-594">594</a></span>
@@ -4433,95 +4397,80 @@ by default when writing to all supported object stores except AWS S3.</p>
 <span class="normal"><a href="#__codelineno-0-650">650</a></span>
 <span class="normal"><a href="#__codelineno-0-651">651</a></span>
 <span class="normal"><a href="#__codelineno-0-652">652</a></span>
-<span class="normal"><a href="#__codelineno-0-653">653</a></span>
-<span class="normal"><a href="#__codelineno-0-654">654</a></span>
-<span class="normal"><a href="#__codelineno-0-655">655</a></span>
-<span class="normal"><a href="#__codelineno-0-656">656</a></span>
-<span class="normal"><a href="#__codelineno-0-657">657</a></span>
-<span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span>
-<span class="normal"><a href="#__codelineno-0-660">660</a></span>
-<span class="normal"><a href="#__codelineno-0-661">661</a></span>
-<span class="normal"><a href="#__codelineno-0-662">662</a></span>
-<span class="normal"><a href="#__codelineno-0-663">663</a></span>
-<span class="normal"><a href="#__codelineno-0-664">664</a></span>
-<span class="normal"><a href="#__codelineno-0-665">665</a></span>
-<span class="normal"><a href="#__codelineno-0-666">666</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a>    <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a>    <span class="n">aws_region</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a>    <span class="n">aws_access_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a>    <span class="n">aws_secret_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a>    <span class="n">dynamodb_locking_table</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="p">):</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">    Initialize a new S3LakeManager.</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">        base_path: The S3 bucket path where the data lake will be stored (e.g., &quot;s3://bucket/prefix/&quot;)</span>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">        aws_region: AWS region name (e.g., &quot;us-east-1&quot;)</span>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">        aws_access_key: AWS access key ID</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">        aws_secret_key: AWS secret access key</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        dynamodb_locking_table: Optional name of DynamoDB table to use as locking provider.</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">                                If not provided, unsafe renames will be enabled.</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">    Notes:</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">        - For production use with concurrent writes, it&#39;s strongly recommended to provide</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">          a DynamoDB table for locking to ensure ACID guarantees.</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">        - The DynamoDB table must have the following schema:</span>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">          - Partition key: &#39;tablePath&#39; (String)</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">          - Sort key: &#39;fileName&#39; (String)</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">        - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">          renames which doesn&#39;t guarantee data consistency with concurrent writes.</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">        - You can create the required DynamoDB table with:</span>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">          ```console</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">          aws dynamodb create-table</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">              --table-name delta_log</span>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">              --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">              --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">              --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">          ```</span>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">        - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">    Example:</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">        ```python</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">        from pdldb import S3LakeManager</span>
+<span class="normal"><a href="#__codelineno-0-653">653</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a>    <span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a>    <span class="n">aws_region</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a>    <span class="n">aws_access_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a>    <span class="n">aws_secret_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a>    <span class="n">dynamodb_locking_table</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="p">):</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">    Initialize a new S3LakeManager.</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">        base_path: The S3 bucket path (e.g., &quot;s3://bucket/prefix/&quot;).</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">        aws_region: Optional AWS region name (e.g., &quot;us-east-1&quot;). If None, SDK attempts discovery.</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        aws_access_key: Optional AWS access key ID. If None, SDK attempts discovery.</span>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">        aws_secret_key: Optional AWS secret key. If None, SDK attempts discovery.</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        dynamodb_locking_table: Optional name of DynamoDB table for locking. If None,</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">                                enables unsafe renames (NOT safe for concurrent writes).</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="sd">    Notes:</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">        - Automatic Credentials (Recommended for AWS Environments): If aws_access_key,</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">        aws_secret_key, and aws_session_token are all None (default), relies on the</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">        standard AWS SDK credential chain (e.g., Lambda/EC2 IAM roles, environment vars,</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">        ~/.aws/credentials).</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">        - Explicit Credentials: Provide aws_access_key and aws_secret_key (and token if temporary)</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">        to use specific credentials. Both key and secret are required if one is provided.</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">        - For production use with concurrent writes, it&#39;s strongly recommended to provide</span>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        a DynamoDB table for locking to ensure ACID guarantees.</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">        - The DynamoDB table must have the following schema:</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">        - Partition key: &#39;tablePath&#39; (String)</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">        - Sort key: &#39;fileName&#39; (String)</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">        - If no dynamodb_locking_table is provided, the S3LakeManager will use unsafe</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">        renames which doesn&#39;t guarantee data consistency with concurrent writes.</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">        - You can create the required DynamoDB table with:</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">        ```console</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">        aws dynamodb create-table</span>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">            --table-name delta_log</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">            --attribute-definitions AttributeName=tablePath,AttributeType=S AttributeName=fileName,AttributeType=S</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            --key-schema AttributeName=tablePath,KeyType=HASH AttributeName=fileName,KeyType=RANGE</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">            --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">        ```</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        - Consider setting a TTL on the DynamoDB table to avoid it growing indefinitely.</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a>    <span class="n">storage_options</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a>    <span class="k">if</span> <span class="n">aws_region</span><span class="p">:</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aws_region</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a>    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_DEFAULT_REGION&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_REGION&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;AWS_DEFAULT_REGION&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-631" name="__codelineno-0-631"></a>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">        # Using unsafe renames (not safe for concurrent writes)</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">        lake_manager = S3LakeManager(</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">            &quot;s3://mybucket/mydatalake/&quot;,</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">            aws_region=&quot;us-east-1&quot;,</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">            aws_access_key=&quot;YOUR_ACCESS_KEY&quot;,</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">            aws_secret_key=&quot;YOUR_SECRET_KEY&quot;</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">        )</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">        # Using DynamoDB locking provider (safe for concurrent writes)</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">        lake_manager = S3LakeManager(</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">            &quot;s3://mybucket/mydatalake/&quot;,</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">            aws_region=&quot;us-east-1&quot;,</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">            aws_access_key=&quot;YOUR_ACCESS_KEY&quot;,</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">            aws_secret_key=&quot;YOUR_SECRET_KEY&quot;,</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">            dynamodb_locking_table=&quot;delta_log&quot;</span>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">        )</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        ```</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="n">storage_options</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="s2">&quot;AWS_REGION&quot;</span><span class="p">:</span> <span class="n">aws_region</span><span class="p">,</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="s2">&quot;AWS_ACCESS_KEY_ID&quot;</span><span class="p">:</span> <span class="n">aws_access_key</span><span class="p">,</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="s2">&quot;AWS_SECRET_ACCESS_KEY&quot;</span><span class="p">:</span> <span class="n">aws_secret_key</span><span class="p">,</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="p">}</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>    <span class="k">if</span> <span class="n">dynamodb_locking_table</span><span class="p">:</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_LOCKING_PROVIDER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dynamodb&quot;</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;DELTA_DYNAMO_TABLE_NAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamodb_locking_table</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_ALLOW_UNSAFE_RENAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a>    <span class="n">params</span> <span class="o">=</span> <span class="n">LakeManagerInitModel</span><span class="p">(</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a>        <span class="n">base_path</span><span class="o">=</span><span class="n">base_path</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a>    <span class="p">)</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">base_path</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">table_manager</span> <span class="o">=</span> <span class="n">S3TableManager</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>    <span class="k">if</span> <span class="n">aws_access_key</span> <span class="ow">and</span> <span class="n">aws_secret_key</span><span class="p">:</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_ACCESS_KEY_ID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aws_access_key</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_SECRET_ACCESS_KEY&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">aws_secret_key</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="k">elif</span> <span class="n">aws_access_key</span> <span class="ow">or</span> <span class="n">aws_secret_key</span><span class="p">:</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a>            <span class="s2">&quot;If providing explicit AWS credentials, both &#39;aws_access_key&#39; and &quot;</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a>            <span class="s2">&quot;&#39;aws_secret_key&#39; must be provided.&quot;</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a>        <span class="p">)</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a>    <span class="k">if</span> <span class="n">dynamodb_locking_table</span><span class="p">:</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_LOCKING_PROVIDER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;dynamodb&quot;</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;DELTA_DYNAMO_TABLE_NAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dynamodb_locking_table</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a>        <span class="n">storage_options</span><span class="p">[</span><span class="s2">&quot;AWS_S3_ALLOW_UNSAFE_RENAME&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>    <span class="n">params</span> <span class="o">=</span> <span class="n">LakeManagerInitModel</span><span class="p">(</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>        <span class="n">base_path</span><span class="o">=</span><span class="n">base_path</span><span class="p">,</span> <span class="n">storage_options</span><span class="o">=</span><span class="n">storage_options</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="p">)</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a>    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">base_path</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">table_manager</span> <span class="o">=</span> <span class="n">S3TableManager</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
